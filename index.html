@@ -7,7 +7,8 @@
     body {
       font-family: sans-serif;
       padding: 20px;
-      background: #f9f9f9;
+      background: #000;
+      color: #fff;
     }
     h2 {
       text-align: center;
@@ -18,10 +19,18 @@
       gap: 10px;
       margin-bottom: 20px;
     }
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
     input[type="text"] {
       width: 100%;
       padding: 8px;
       font-size: 1em;
+    }
+    input[type="range"] {
+      width: 100%;
     }
     .grid {
       display: grid;
@@ -32,30 +41,29 @@
       width: 100%;
       aspect-ratio: 16 / 9;
       border: none;
+      background-color: #111;
     }
   </style>
 </head>
 <body>
 
-<h2>YouTubeのリンクを貼ると自動で再生されます</h2>
+<h2>YouTubeリンク貼り付け＆再生（黒背景・音量調整・保存対応）</h2>
 
-<div class="inputs">
-  <input type="text" placeholder="YouTubeリンク1" oninput="updateVideo(0, this.value)">
-  <input type="text" placeholder="YouTubeリンク2" oninput="updateVideo(1, this.value)">
-  <input type="text" placeholder="YouTubeリンク3" oninput="updateVideo(2, this.value)">
-  <input type="text" placeholder="YouTubeリンク4" oninput="updateVideo(3, this.value)">
+<div class="inputs" id="inputs-container">
+  <!-- 入力欄と音量スライダーが自動生成されます -->
 </div>
 
-<div class="grid">
-  <iframe id="player0" allowfullscreen></iframe>
-  <iframe id="player1" allowfullscreen></iframe>
-  <iframe id="player2" allowfullscreen></iframe>
-  <iframe id="player3" allowfullscreen></iframe>
+<div class="grid" id="grid-container">
+  <!-- 動画iframeが自動生成されます -->
 </div>
 
 <script>
+  const MAX_VIDEOS = 4;
+
+  // 保存されたリンクを取得
+  const savedLinks = JSON.parse(localStorage.getItem("videoLinks") || "[]");
+
   function extractVideoID(url) {
-    // YouTubeの様々な形式から動画IDを抽出する
     const patterns = [
       /(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([a-zA-Z0-9_-]{11})/
     ];
@@ -70,11 +78,70 @@
     const videoId = extractVideoID(url);
     const iframe = document.getElementById('player' + index);
     if (videoId) {
-      iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+      saveLink(index, url);
     } else {
       iframe.src = '';
     }
   }
+
+  function saveLink(index, url) {
+    savedLinks[index] = url;
+    localStorage.setItem("videoLinks", JSON.stringify(savedLinks));
+  }
+
+  function createVideoElements() {
+    const inputsContainer = document.getElementById('inputs-container');
+    const gridContainer = document.getElementById('grid-container');
+
+    for (let i = 0; i < MAX_VIDEOS; i++) {
+      // 入力欄 + 音量スライダー
+      const group = document.createElement('div');
+      group.className = 'input-group';
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = `YouTubeリンク${i + 1}`;
+      input.value = savedLinks[i] || '';
+      input.addEventListener('input', () => updateVideo(i, input.value));
+
+      const volume = document.createElement('input');
+      volume.type = 'range';
+      volume.min = 0;
+      volume.max = 100;
+      volume.value = 100;
+      volume.addEventListener('input', () => {
+        const iframe = document.getElementById('player' + i);
+        try {
+          iframe.contentWindow.postMessage(JSON.stringify({
+            event: "command",
+            func: "setVolume",
+            args: [volume.value]
+          }), "*");
+        } catch (e) {
+          console.warn("音量制御失敗（iframeが読み込み済みでない可能性）");
+        }
+      });
+
+      group.appendChild(input);
+      group.appendChild(volume);
+      inputsContainer.appendChild(group);
+
+      // iframe（動画プレイヤー）
+      const iframe = document.createElement('iframe');
+      iframe.id = 'player' + i;
+      iframe.allow = "autoplay; encrypted-media";
+      iframe.allowFullscreen = true;
+      gridContainer.appendChild(iframe);
+
+      // 初期化
+      if (input.value) {
+        updateVideo(i, input.value);
+      }
+    }
+  }
+
+  createVideoElements();
 </script>
 
 </body>
