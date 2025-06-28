@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="ja">
+<!DOCTYPE html>
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>自由配置 YouTube プレイヤー</title>
@@ -28,6 +29,7 @@
       position: relative;
       width: 100vw;
       height: calc(100vh - 60px);
+      overflow: auto;
     }
     .video-box {
       position: absolute;
@@ -38,20 +40,33 @@
     }
     .video-box iframe {
       width: 100%;
-      height: calc(100% - 40px);
+      height: calc(100% - 60px);
       display: block;
     }
     .controls {
-      height: 40px;
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: #222;
       padding: 2px 6px;
       gap: 6px;
+      flex-wrap: wrap;
     }
     .volume-slider {
       width: 100px;
+    }
+    .arrow-buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 2px;
+    }
+    .arrow-buttons button {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      padding: 0;
+      margin: 1px;
     }
     .delete-btn {
       background: red;
@@ -62,13 +77,20 @@
     }
   </style>
 </head>
-<body><div id="controls">
+<body>
+
+<div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
   <button onclick="saveState()">保存</button>
   <button onclick="smartphoneLayout()">スマホ配置</button>
   <button onclick="grid2x2Layout()">2×2配置</button>
-</div><div id="container"></div><script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script><script>
+</div>
+
+<div id="container"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script>
 let zIndexCounter = 1000;
 
 function extractVideoID(url) {
@@ -126,12 +148,22 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   };
 
+  const arrowButtons = document.createElement("div");
+  arrowButtons.className = "arrow-buttons";
+  ["↑","↓","←","→"].forEach(dir => {
+    const btn = document.createElement("button");
+    btn.textContent = dir;
+    btn.onclick = () => moveBox(box, dir);
+    arrowButtons.appendChild(btn);
+  });
+
   const delBtn = document.createElement("button");
   delBtn.className = "delete-btn";
   delBtn.textContent = "×";
   delBtn.onclick = () => container.removeChild(box);
 
   controls.appendChild(volSlider);
+  controls.appendChild(arrowButtons);
   controls.appendChild(delBtn);
 
   box.appendChild(controls);
@@ -144,6 +176,19 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
 
   makeDraggableAndResizable(box);
   document.getElementById("videoUrl").value = "";
+}
+
+function moveBox(box, dir) {
+  const step = 10;
+  let x = parseFloat(box.getAttribute('data-x')) || 0;
+  let y = parseFloat(box.getAttribute('data-y')) || 0;
+  if (dir === "↑") y -= step;
+  if (dir === "↓") y += step;
+  if (dir === "←") x -= step;
+  if (dir === "→") x += step;
+  box.style.transform = `translate(${x}px, ${y}px)`;
+  box.setAttribute('data-x', x);
+  box.setAttribute('data-y', y);
 }
 
 function makeDraggableAndResizable(el) {
@@ -179,17 +224,14 @@ function saveState() {
     const src = iframe.src;
     const videoIdMatch = src.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
     if (!videoIdMatch) return;
-
     const videoId = videoIdMatch[1];
     const x = parseFloat(box.getAttribute('data-x')) || 0;
     const y = parseFloat(box.getAttribute('data-y')) || 0;
     const width = box.offsetWidth;
     const height = box.offsetHeight;
     const volume = box.querySelector('.volume-slider').value;
-
     data.push({ videoId, x, y, width, height, volume });
   });
-
   localStorage.setItem('videoData', JSON.stringify(data));
   alert('保存しました！');
 }
@@ -224,7 +266,6 @@ function grid2x2Layout() {
   const rows = Math.ceil(boxes.length / cols);
   const boxWidth = containerWidth / cols;
   const boxHeight = containerHeight / rows;
-
   boxes.forEach((box, i) => {
     const col = i % cols;
     const row = Math.floor(i / cols);
@@ -239,5 +280,6 @@ function grid2x2Layout() {
 }
 
 window.onload = loadSavedVideos;
-</script></body>
+</script>
+</body>
 </html>
