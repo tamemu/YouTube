@@ -2,67 +2,72 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>YouTube 動画 2x2</title>
+  <title>自由配置 YouTubeプレイヤー</title>
   <style>
     body {
-      font-family: sans-serif;
-      padding: 20px;
+      margin: 0;
       background: #000;
       color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
     }
-    h2 {
-      text-align: center;
-    }
-    .inputs {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      margin-bottom: 20px;
-    }
-    .input-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
+    #controls {
+      padding: 10px;
+      background: #111;
     }
     input[type="text"] {
-      width: 100%;
-      padding: 8px;
-      font-size: 1em;
+      width: 300px;
+      padding: 5px;
+      margin-right: 10px;
     }
-    input[type="range"] {
-      width: 100%;
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
     }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+    #container {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 50px);
     }
-    iframe {
+    .video-box {
+      position: absolute;
+      width: 480px;
+      height: 270px;
+      border: 2px solid #444;
+      resize: both;
+      overflow: hidden;
+    }
+    .video-box iframe {
       width: 100%;
-      aspect-ratio: 16 / 9;
+      height: 100%;
+      pointer-events: auto;
+    }
+    .delete-btn {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      z-index: 10;
+      background: red;
       border: none;
-      background-color: #111;
+      color: white;
+      padding: 4px 6px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
 
-<h2>YouTubeリンク貼り付け＆再生（黒背景・音量調整・保存対応）</h2>
-
-<div class="inputs" id="inputs-container">
-  <!-- 入力欄と音量スライダーが自動生成されます -->
+<div id="controls">
+  <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
+  <button onclick="addVideo()">動画を追加</button>
 </div>
 
-<div class="grid" id="grid-container">
-  <!-- 動画iframeが自動生成されます -->
-</div>
+<div id="container"></div>
+
+<!-- interact.js CDN（ドラッグ&リサイズ用） -->
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
 <script>
-  const MAX_VIDEOS = 4;
-
-  // 保存されたリンクを取得
-  const savedLinks = JSON.parse(localStorage.getItem("videoLinks") || "[]");
-
   function extractVideoID(url) {
     const patterns = [
       /(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([a-zA-Z0-9_-]{11})/
@@ -74,74 +79,70 @@
     return null;
   }
 
-  function updateVideo(index, url) {
-    const videoId = extractVideoID(url);
-    const iframe = document.getElementById('player' + index);
-    if (videoId) {
-      iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
-      saveLink(index, url);
-    } else {
-      iframe.src = '';
+  function addVideo() {
+    const url = document.getElementById("videoUrl").value;
+    const id = extractVideoID(url);
+    if (!id) {
+      alert("有効なYouTubeリンクを入力してください");
+      return;
     }
+
+    const container = document.getElementById("container");
+    const box = document.createElement("div");
+    box.className = "video-box";
+    box.style.top = "50px";
+    box.style.left = "50px";
+
+    const iframe = document.createElement("iframe");
+    iframe.src = `https://www.youtube.com/embed/${id}`;
+    iframe.allow = "autoplay; encrypted-media";
+    iframe.allowFullscreen = true;
+
+    const del = document.createElement("button");
+    del.className = "delete-btn";
+    del.textContent = "×";
+    del.onclick = () => container.removeChild(box);
+
+    box.appendChild(del);
+    box.appendChild(iframe);
+    container.appendChild(box);
+
+    makeDraggableAndResizable(box);
+
+    document.getElementById("videoUrl").value = "";
   }
 
-  function saveLink(index, url) {
-    savedLinks[index] = url;
-    localStorage.setItem("videoLinks", JSON.stringify(savedLinks));
-  }
-
-  function createVideoElements() {
-    const inputsContainer = document.getElementById('inputs-container');
-    const gridContainer = document.getElementById('grid-container');
-
-    for (let i = 0; i < MAX_VIDEOS; i++) {
-      // 入力欄 + 音量スライダー
-      const group = document.createElement('div');
-      group.className = 'input-group';
-
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.placeholder = `YouTubeリンク${i + 1}`;
-      input.value = savedLinks[i] || '';
-      input.addEventListener('input', () => updateVideo(i, input.value));
-
-      const volume = document.createElement('input');
-      volume.type = 'range';
-      volume.min = 0;
-      volume.max = 100;
-      volume.value = 100;
-      volume.addEventListener('input', () => {
-        const iframe = document.getElementById('player' + i);
-        try {
-          iframe.contentWindow.postMessage(JSON.stringify({
-            event: "command",
-            func: "setVolume",
-            args: [volume.value]
-          }), "*");
-        } catch (e) {
-          console.warn("音量制御失敗（iframeが読み込み済みでない可能性）");
+  function makeDraggableAndResizable(el) {
+    interact(el)
+      .draggable({
+        listeners: {
+          move(event) {
+            const { dx, dy } = event;
+            const x = (parseFloat(el.getAttribute('data-x')) || 0) + dx;
+            const y = (parseFloat(el.getAttribute('data-y')) || 0) + dy;
+            el.style.transform = `translate(${x}px, ${y}px)`;
+            el.setAttribute('data-x', x);
+            el.setAttribute('data-y', y);
+          }
         }
+      })
+      .resizable({
+        edges: { left: true, right: true, bottom: true, top: true },
+        listeners: {
+          move(event) {
+            let { width, height } = event.rect;
+            el.style.width = width + 'px';
+            el.style.height = height + 'px';
+          }
+        },
+        modifiers: [
+          interact.modifiers.restrictSize({
+            min: { width: 160, height: 90 },
+            max: { width: 1280, height: 720 }
+          })
+        ]
       });
-
-      group.appendChild(input);
-      group.appendChild(volume);
-      inputsContainer.appendChild(group);
-
-      // iframe（動画プレイヤー）
-      const iframe = document.createElement('iframe');
-      iframe.id = 'player' + i;
-      iframe.allow = "autoplay; encrypted-media";
-      iframe.allowFullscreen = true;
-      gridContainer.appendChild(iframe);
-
-      // 初期化
-      if (input.value) {
-        updateVideo(i, input.value);
-      }
-    }
   }
-
-  createVideoElements();
 </script>
 
 </body>
