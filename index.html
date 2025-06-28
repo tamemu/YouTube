@@ -14,7 +14,6 @@
     #controls {
       padding: 10px;
       background: #111;
-      white-space: nowrap;
     }
     input[type="text"] {
       width: 300px;
@@ -35,6 +34,7 @@
     .video-box {
       position: absolute;
       border: 2px solid #444;
+      resize: both;
       overflow: hidden;
       background: #111;
     }
@@ -46,15 +46,27 @@
     .controls {
       height: 60px;
       display: flex;
-      flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
       background: #222;
       padding: 2px 6px;
       gap: 6px;
+      flex-wrap: wrap;
     }
     .volume-slider {
       width: 100px;
+    }
+    .arrow-buttons {
+      display: flex;
+      flex-direction: row;
+      gap: 2px;
+    }
+    .arrow-buttons button {
+      width: 24px;
+      height: 24px;
+      font-size: 12px;
+      padding: 0;
+      margin: 1px;
     }
     .delete-btn {
       background: red;
@@ -63,30 +75,20 @@
       padding: 2px 6px;
       cursor: pointer;
     }
-    .move-controls {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .move-row {
-      display: flex;
-      justify-content: center;
-    }
-    .move-controls button {
-      padding: 2px 6px;
-      margin: 1px;
-    }
   </style>
 </head>
 <body>
+
 <div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
   <button onclick="saveState()">保存</button>
-  <button onclick="applySmartLayout()">スマホ配置</button>
-  <button onclick="applyGridLayout()">2×2配置</button>
+  <button onclick="smartphoneLayout()">スマホ配置</button>
+  <button onclick="grid2x2Layout()">2×2配置</button>
 </div>
+
 <div id="container"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 <script>
 let zIndexCounter = 1000;
@@ -110,6 +112,7 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
       return;
     }
   }
+
   const box = document.createElement("div");
   box.className = "video-box";
   box.style.width = width + "px";
@@ -118,12 +121,15 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   box.setAttribute("data-x", x);
   box.setAttribute("data-y", y);
   box.style.zIndex = zIndexCounter++;
+
   const iframe = document.createElement("iframe");
   iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
   iframe.allow = "autoplay; encrypted-media";
   iframe.allowFullscreen = true;
+
   const controls = document.createElement("div");
   controls.className = "controls";
+
   const volSlider = document.createElement("input");
   volSlider.type = "range";
   volSlider.min = 0;
@@ -137,34 +143,42 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
         func: "setVolume",
         args: [volSlider.value]
       }), "*");
-    } catch (e) { console.warn("音量設定失敗"); }
+    } catch (e) {
+      console.warn("音量設定失敗");
+    }
   };
-  const moveBoxBtn = document.createElement("div");
-  moveBoxBtn.className = "move-controls";
-  moveBoxBtn.innerHTML = `
-    <div class="move-row"><button onclick="moveBox(this, '↑')">↑</button></div>
-    <div class="move-row">
-      <button onclick="moveBox(this, '←')">←</button>
-      <button onclick="moveBox(this, '→')">→</button>
-    </div>
-    <div class="move-row"><button onclick="moveBox(this, '↓')">↓</button></div>`;
+
+  const arrowButtons = document.createElement("div");
+  arrowButtons.className = "arrow-buttons";
+  ["↑","↓","←","→"].forEach(dir => {
+    const btn = document.createElement("button");
+    btn.textContent = dir;
+    btn.onclick = () => moveBox(box, dir);
+    arrowButtons.appendChild(btn);
+  });
+
   const delBtn = document.createElement("button");
   delBtn.className = "delete-btn";
   delBtn.textContent = "×";
   delBtn.onclick = () => container.removeChild(box);
+
   controls.appendChild(volSlider);
-  controls.appendChild(moveBoxBtn);
+  controls.appendChild(arrowButtons);
   controls.appendChild(delBtn);
+
   box.appendChild(controls);
   box.appendChild(iframe);
   container.appendChild(box);
-  box.addEventListener("mousedown", () => box.style.zIndex = zIndexCounter++);
+
+  box.addEventListener("mousedown", () => {
+    box.style.zIndex = zIndexCounter++;
+  });
+
   makeDraggableAndResizable(box);
   document.getElementById("videoUrl").value = "";
 }
 
-function moveBox(button, dir) {
-  const box = button.closest('.video-box');
+function moveBox(box, dir) {
   const step = 10;
   let x = parseFloat(box.getAttribute('data-x')) || 0;
   let y = parseFloat(box.getAttribute('data-y')) || 0;
@@ -173,8 +187,8 @@ function moveBox(button, dir) {
   if (dir === "←") x -= step;
   if (dir === "→") x += step;
   box.style.transform = `translate(${x}px, ${y}px)`;
-  box.setAttribute("data-x", x);
-  box.setAttribute("data-y", y);
+  box.setAttribute('data-x', x);
+  box.setAttribute('data-y', y);
 }
 
 function makeDraggableAndResizable(el) {
@@ -195,29 +209,10 @@ function makeDraggableAndResizable(el) {
       edges: { left: true, right: true, bottom: true, top: true },
       listeners: {
         move(event) {
-          const iframe = event.target.querySelector('iframe');
-          if (iframe) iframe.style.pointerEvents = 'none';
-          let x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.deltaRect.left;
-          let y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.deltaRect.top;
-          Object.assign(event.target.style, {
-            width: `${event.rect.width}px`,
-            height: `${event.rect.height}px`,
-            transform: `translate(${x}px, ${y}px)`
-          });
-          event.target.setAttribute('data-x', x);
-          event.target.setAttribute('data-y', y);
-        },
-        end(event) {
-          const iframe = event.target.querySelector('iframe');
-          if (iframe) iframe.style.pointerEvents = 'auto';
+          el.style.width = event.rect.width + 'px';
+          el.style.height = event.rect.height + 'px';
         }
-      },
-      modifiers: [
-        interact.modifiers.restrictSize({
-          min: { width: 160, height: 100 },
-          max: { width: 1280, height: 800 }
-        })
-      ]
+      }
     });
 }
 
@@ -243,41 +238,44 @@ function saveState() {
 
 function loadSavedVideos() {
   const data = JSON.parse(localStorage.getItem('videoData') || '[]');
-  data.forEach(v => addVideo(v.videoId, v.x, v.y, v.width, v.height, v.volume));
-}
-
-function applySmartLayout() {
-  const boxes = document.querySelectorAll('.video-box');
-  let top = 10;
-  boxes.forEach(box => {
-    const width = Math.min(window.innerWidth - 20, 360);
-    const height = (width / 16) * 9 + 60;
-    box.style.width = width + "px";
-    box.style.height = height + "px";
-    box.style.transform = `translate(10px, ${top}px)`;
-    box.setAttribute("data-x", 10);
-    box.setAttribute("data-y", top);
-    top += height + 20;
+  data.forEach(v => {
+    addVideo(v.videoId, v.x, v.y, v.width, v.height, v.volume);
   });
 }
 
-function applyGridLayout() {
+function smartphoneLayout() {
   const boxes = document.querySelectorAll('.video-box');
-  const screenWidth = window.innerWidth;
-  const screenHeight = window.innerHeight;
+  let y = 10;
+  boxes.forEach(box => {
+    const width = window.innerWidth - 20;
+    const height = width * 9 / 16;
+    box.style.width = width + 'px';
+    box.style.height = height + 'px';
+    box.style.transform = `translate(10px, ${y}px)`;
+    box.setAttribute('data-x', 10);
+    box.setAttribute('data-y', y);
+    y += height + 20;
+  });
+}
+
+function grid2x2Layout() {
+  const boxes = document.querySelectorAll('.video-box');
+  const containerWidth = window.innerWidth;
+  const containerHeight = window.innerHeight - 60;
   const cols = 2;
-  const width = screenWidth / cols - 40;
-  const height = (width / 16) * 9 + 60;
-  boxes.forEach((box, index) => {
-    const col = index % cols;
-    const row = Math.floor(index / cols);
-    const x = col * (width + 20) + 10;
-    const y = row * (height + 20) + 10;
-    box.style.width = width + "px";
-    box.style.height = height + "px";
+  const rows = Math.ceil(boxes.length / cols);
+  const boxWidth = containerWidth / cols;
+  const boxHeight = containerHeight / rows;
+  boxes.forEach((box, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = boxWidth * col;
+    const y = boxHeight * row;
+    box.style.width = (boxWidth - 10) + 'px';
+    box.style.height = (boxHeight - 10) + 'px';
     box.style.transform = `translate(${x}px, ${y}px)`;
-    box.setAttribute("data-x", x);
-    box.setAttribute("data-y", y);
+    box.setAttribute('data-x', x);
+    box.setAttribute('data-y', y);
   });
 }
 
