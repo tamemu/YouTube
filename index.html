@@ -67,6 +67,7 @@
   <button onclick="addVideo()">動画を追加</button>
   <button onclick="saveState()">保存</button>
   <button onclick="smartphoneLayout()">スマホ配置</button>
+  <button onclick="grid2x2Layout()">2×2配置</button>
 </div><div id="container"></div><script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script><script>
 let zIndexCounter = 1000;
 
@@ -212,6 +213,28 @@ function smartphoneLayout() {
     box.setAttribute('data-x', 10);
     box.setAttribute('data-y', y);
     y += height + 20;
+  });
+}
+
+function grid2x2Layout() {
+  const boxes = document.querySelectorAll('.video-box');
+  const containerWidth = window.innerWidth;
+  const containerHeight = window.innerHeight - 60;
+  const cols = 2;
+  const rows = Math.ceil(boxes.length / cols);
+  const boxWidth = containerWidth / cols;
+  const boxHeight = containerHeight / rows;
+
+  boxes.forEach((box, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    const x = boxWidth * col;
+    const y = boxHeight * row;
+    box.style.width = (boxWidth - 10) + 'px';
+    box.style.height = (boxHeight - 10) + 'px';
+    box.style.transform = `translate(${x}px, ${y}px)`;
+    box.setAttribute('data-x', x);
+    box.setAttribute('data-y', y);
   });
 }
 
