@@ -70,7 +70,8 @@
   <button onclick="addVideo()">動画を追加</button>
   <button onclick="saveState()">保存</button>
   <button onclick="applySmartLayout()">スマホ配置</button>
-  <button onclick="applyGridLayout()">2×2配置</button>
+  <button onclick="applyGridLayout(2)">2×2配置</button>
+  <button onclick="applyGridLayout(4)">4×4配置</button>
 </div>
 <div id="container"></div>
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
@@ -230,10 +231,9 @@ function applySmartLayout() {
   });
 }
 
-function applyGridLayout() {
+function applyGridLayout(cols = 2) {
   const boxes = document.querySelectorAll('.video-box');
   const screenWidth = window.innerWidth;
-  const cols = 2;
   const width = screenWidth / cols - 40;
   const height = (width / 16) * 9 + 40;
   boxes.forEach((box, index) => {
