@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>自由配置 YouTubeプレイヤー</title>
+  <title>自由配置 YouTube プレイヤー</title>
   <style>
     body {
       margin: 0;
@@ -23,35 +23,42 @@
     button {
       padding: 6px 12px;
       cursor: pointer;
+      margin-right: 5px;
     }
     #container {
       position: relative;
       width: 100vw;
-      height: calc(100vh - 50px);
+      height: calc(100vh - 60px);
     }
     .video-box {
       position: absolute;
-      width: 480px;
-      height: 270px;
       border: 2px solid #444;
       resize: both;
       overflow: hidden;
+      background: #111;
     }
     .video-box iframe {
       width: 100%;
-      height: 100%;
-      pointer-events: auto;
+      height: calc(100% - 30px);
+      display: block;
     }
-    .delete-btn {
-      position: absolute;
-      top: 4px;
-      right: 4px;
-      z-index: 10;
+    .video-box .controls {
+      padding: 2px 6px;
+      background: #222;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .video-box .delete-btn {
       background: red;
-      border: none;
       color: white;
-      padding: 4px 6px;
+      border: none;
+      padding: 2px 6px;
       cursor: pointer;
+    }
+    .video-box .volume-slider {
+      width: 100px;
     }
   </style>
 </head>
@@ -60,89 +67,156 @@
 <div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
+  <button onclick="saveState()">保存</button>
 </div>
 
 <div id="container"></div>
 
-<!-- interact.js CDN（ドラッグ&リサイズ用） -->
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 
 <script>
-  function extractVideoID(url) {
-    const patterns = [
-      /(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([a-zA-Z0-9_-]{11})/
-    ];
-    for (const pattern of patterns) {
-      const match = url.match(pattern);
-      if (match) return match[1];
-    }
-    return null;
-  }
+let zIndexCounter = 1000;
 
-  function addVideo() {
+function extractVideoID(url) {
+  const patterns = [
+    /(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([a-zA-Z0-9_-]{11})/
+  ];
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+}
+
+function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, volume = 100) {
+  const container = document.getElementById("container");
+
+  if (!videoId) {
     const url = document.getElementById("videoUrl").value;
-    const id = extractVideoID(url);
-    if (!id) {
+    videoId = extractVideoID(url);
+    if (!videoId) {
       alert("有効なYouTubeリンクを入力してください");
       return;
     }
-
-    const container = document.getElementById("container");
-    const box = document.createElement("div");
-    box.className = "video-box";
-    box.style.top = "50px";
-    box.style.left = "50px";
-
-    const iframe = document.createElement("iframe");
-    iframe.src = `https://www.youtube.com/embed/${id}`;
-    iframe.allow = "autoplay; encrypted-media";
-    iframe.allowFullscreen = true;
-
-    const del = document.createElement("button");
-    del.className = "delete-btn";
-    del.textContent = "×";
-    del.onclick = () => container.removeChild(box);
-
-    box.appendChild(del);
-    box.appendChild(iframe);
-    container.appendChild(box);
-
-    makeDraggableAndResizable(box);
-
-    document.getElementById("videoUrl").value = "";
   }
 
-  function makeDraggableAndResizable(el) {
-    interact(el)
-      .draggable({
-        listeners: {
-          move(event) {
-            const { dx, dy } = event;
-            const x = (parseFloat(el.getAttribute('data-x')) || 0) + dx;
-            const y = (parseFloat(el.getAttribute('data-y')) || 0) + dy;
-            el.style.transform = `translate(${x}px, ${y}px)`;
-            el.setAttribute('data-x', x);
-            el.setAttribute('data-y', y);
-          }
+  const box = document.createElement("div");
+  box.className = "video-box";
+  box.style.width = width + "px";
+  box.style.height = height + "px";
+  box.style.transform = `translate(${x}px, ${y}px)`;
+  box.style.zIndex = zIndexCounter++;
+
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
+  iframe.allow = "autoplay; encrypted-media";
+  iframe.allowFullscreen = true;
+
+  const controlBar = document.createElement("div");
+  controlBar.className = "controls";
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "delete-btn";
+  delBtn.textContent = "×";
+  delBtn.onclick = () => container.removeChild(box);
+
+  const volSlider = document.createElement("input");
+  volSlider.type = "range";
+  volSlider.min = 0;
+  volSlider.max = 100;
+  volSlider.value = volume;
+  volSlider.className = "volume-slider";
+  volSlider.oninput = () => {
+    try {
+      iframe.contentWindow.postMessage(JSON.stringify({
+        event: "command",
+        func: "setVolume",
+        args: [volSlider.value]
+      }), "*");
+    } catch (e) {
+      console.warn("音量設定失敗");
+    }
+  };
+
+  controlBar.appendChild(volSlider);
+  controlBar.appendChild(delBtn);
+
+  box.appendChild(controlBar);
+  box.appendChild(iframe);
+  container.appendChild(box);
+
+  box.addEventListener("mousedown", () => {
+    box.style.zIndex = zIndexCounter++;
+  });
+
+  makeDraggableAndResizable(box);
+  document.getElementById("videoUrl").value = "";
+}
+
+function makeDraggableAndResizable(el) {
+  interact(el)
+    .draggable({
+      listeners: {
+        move(event) {
+          const { dx, dy } = event;
+          const x = (parseFloat(el.getAttribute('data-x')) || 0) + dx;
+          const y = (parseFloat(el.getAttribute('data-y')) || 0) + dy;
+          el.style.transform = `translate(${x}px, ${y}px)`;
+          el.setAttribute('data-x', x);
+          el.setAttribute('data-y', y);
         }
-      })
-      .resizable({
-        edges: { left: true, right: true, bottom: true, top: true },
-        listeners: {
-          move(event) {
-            let { width, height } = event.rect;
-            el.style.width = width + 'px';
-            el.style.height = height + 'px';
-          }
-        },
-        modifiers: [
-          interact.modifiers.restrictSize({
-            min: { width: 160, height: 90 },
-            max: { width: 1280, height: 720 }
-          })
-        ]
-      });
-  }
+      }
+    })
+    .resizable({
+      edges: { left: true, right: true, bottom: true, top: true },
+      listeners: {
+        move(event) {
+          let { width, height } = event.rect;
+          el.style.width = width + 'px';
+          el.style.height = height + 'px';
+        }
+      },
+      modifiers: [
+        interact.modifiers.restrictSize({
+          min: { width: 160, height: 100 },
+          max: { width: 1280, height: 800 }
+        })
+      ]
+    });
+}
+
+function saveState() {
+  const boxes = document.querySelectorAll('.video-box');
+  const data = [];
+
+  boxes.forEach(box => {
+    const iframe = box.querySelector('iframe');
+    const src = iframe.src;
+    const videoIdMatch = src.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
+    if (!videoIdMatch) return;
+
+    const videoId = videoIdMatch[1];
+    const x = parseFloat(box.getAttribute('data-x')) || 0;
+    const y = parseFloat(box.getAttribute('data-y')) || 0;
+    const width = box.offsetWidth;
+    const height = box.offsetHeight;
+    const volume = box.querySelector('.volume-slider').value;
+
+    data.push({ videoId, x, y, width, height, volume });
+  });
+
+  localStorage.setItem('videoData', JSON.stringify(data));
+  alert('保存しました！');
+}
+
+function loadSavedVideos() {
+  const data = JSON.parse(localStorage.getItem('videoData') || '[]');
+  data.forEach(v => {
+    addVideo(v.videoId, v.x, v.y, v.width, v.height, v.volume);
+  });
+}
+
+window.onload = loadSavedVideos;
 </script>
 
 </body>
