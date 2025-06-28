@@ -39,26 +39,31 @@
     }
     .video-box iframe {
       width: 100%;
-      height: calc(100% - 30px);
+      height: calc(100% - 40px);
       display: block;
     }
-    .video-box .controls {
-      padding: 2px 6px;
-      background: #222;
-      height: 30px;
+    .controls {
+      height: 40px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      background: #222;
+      padding: 2px 6px;
+      gap: 6px;
     }
-    .video-box .delete-btn {
+    .volume-slider {
+      width: 100px;
+    }
+    .arrow-controls button {
+      padding: 2px 6px;
+      margin: 0 1px;
+    }
+    .delete-btn {
       background: red;
       color: white;
       border: none;
       padding: 2px 6px;
       cursor: pointer;
-    }
-    .video-box .volume-slider {
-      width: 100px;
     }
   </style>
 </head>
@@ -105,6 +110,8 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   box.style.width = width + "px";
   box.style.height = height + "px";
   box.style.transform = `translate(${x}px, ${y}px)`;
+  box.setAttribute("data-x", x);
+  box.setAttribute("data-y", y);
   box.style.zIndex = zIndexCounter++;
 
   const iframe = document.createElement("iframe");
@@ -112,13 +119,8 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   iframe.allow = "autoplay; encrypted-media";
   iframe.allowFullscreen = true;
 
-  const controlBar = document.createElement("div");
-  controlBar.className = "controls";
-
-  const delBtn = document.createElement("button");
-  delBtn.className = "delete-btn";
-  delBtn.textContent = "×";
-  delBtn.onclick = () => container.removeChild(box);
+  const controls = document.createElement("div");
+  controls.className = "controls";
 
   const volSlider = document.createElement("input");
   volSlider.type = "range";
@@ -138,10 +140,26 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   };
 
-  controlBar.appendChild(volSlider);
-  controlBar.appendChild(delBtn);
+  const arrowGroup = document.createElement("div");
+  arrowGroup.className = "arrow-controls";
 
-  box.appendChild(controlBar);
+  ["↑", "↓", "←", "→"].forEach(dir => {
+    const btn = document.createElement("button");
+    btn.textContent = dir;
+    btn.onclick = () => moveBox(box, dir);
+    arrowGroup.appendChild(btn);
+  });
+
+  const delBtn = document.createElement("button");
+  delBtn.className = "delete-btn";
+  delBtn.textContent = "×";
+  delBtn.onclick = () => container.removeChild(box);
+
+  controls.appendChild(volSlider);
+  controls.appendChild(arrowGroup);
+  controls.appendChild(delBtn);
+
+  box.appendChild(controls);
   box.appendChild(iframe);
   container.appendChild(box);
 
@@ -149,31 +167,33 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     box.style.zIndex = zIndexCounter++;
   });
 
-  makeDraggableAndResizable(box);
+  makeResizableOnly(box);
   document.getElementById("videoUrl").value = "";
 }
 
-function makeDraggableAndResizable(el) {
+function moveBox(box, dir) {
+  const step = 10;
+  let x = parseFloat(box.getAttribute('data-x')) || 0;
+  let y = parseFloat(box.getAttribute('data-y')) || 0;
+
+  if (dir === "↑") y -= step;
+  if (dir === "↓") y += step;
+  if (dir === "←") x -= step;
+  if (dir === "→") x += step;
+
+  box.style.transform = `translate(${x}px, ${y}px)`;
+  box.setAttribute("data-x", x);
+  box.setAttribute("data-y", y);
+}
+
+function makeResizableOnly(el) {
   interact(el)
-    .draggable({
-      listeners: {
-        move(event) {
-          const { dx, dy } = event;
-          const x = (parseFloat(el.getAttribute('data-x')) || 0) + dx;
-          const y = (parseFloat(el.getAttribute('data-y')) || 0) + dy;
-          el.style.transform = `translate(${x}px, ${y}px)`;
-          el.setAttribute('data-x', x);
-          el.setAttribute('data-y', y);
-        }
-      }
-    })
     .resizable({
       edges: { left: true, right: true, bottom: true, top: true },
       listeners: {
         move(event) {
-          let { width, height } = event.rect;
-          el.style.width = width + 'px';
-          el.style.height = height + 'px';
+          el.style.width = event.rect.width + 'px';
+          el.style.height = event.rect.height + 'px';
         }
       },
       modifiers: [
