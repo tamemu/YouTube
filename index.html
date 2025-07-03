@@ -68,7 +68,7 @@
 <div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
-  <button onclick="applyOptimalLayout()">最適配置</button>
+  <button onclick="applySingleColumnLayout()">1×1配置</button>
   <button onclick="applyGridLayout(2)">2×2配置</button>
   <button onclick="applyGridLayout(3)">3×3配置</button>
 </div>
@@ -99,14 +99,11 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   }
 
-  // 縦に追加する位置を決定
-  const existingBoxes = document.querySelectorAll(".video-box");
-  let newY = 50;
-  if (existingBoxes.length > 0) {
-    const lastBox = existingBoxes[existingBoxes.length - 1];
-    const lastY = parseFloat(lastBox.style.top) || 0;
-    const lastHeight = lastBox.offsetHeight || 270;
-    newY = lastY + lastHeight + 20;
+  // 自動縦並び位置
+  const boxes = document.querySelectorAll(".video-box");
+  if (x === null && y === null && boxes.length > 0) {
+    const last = boxes[boxes.length - 1];
+    y = parseFloat(last.style.top) + last.offsetHeight + 20;
   }
 
   const box = document.createElement("div");
@@ -114,9 +111,9 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   box.style.width = width + "px";
   box.style.height = height + "px";
   box.style.left = x + "px";
-  box.style.top = newY + "px";
+  box.style.top = y + "px";
   box.setAttribute("data-x", x);
-  box.setAttribute("data-y", newY);
+  box.setAttribute("data-y", y);
   box.style.zIndex = zIndexCounter++;
 
   const iframe = document.createElement("iframe");
@@ -219,8 +216,8 @@ function saveState() {
     const videoIdMatch = src.match(/\/embed\/([a-zA-Z0-9_-]{11})/);
     if (!videoIdMatch) return;
     const videoId = videoIdMatch[1];
-    const x = parseFloat(box.getAttribute('data-x')) || 0;
-    const y = parseFloat(box.getAttribute('data-y')) || 0;
+    const x = parseFloat(box.style.left) || 0;
+    const y = parseFloat(box.style.top) || 0;
     const width = box.offsetWidth;
     const height = box.offsetHeight;
     const volume = box.querySelector('.volume-slider').value;
@@ -234,7 +231,7 @@ function loadSavedVideos() {
   data.forEach(v => addVideo(v.videoId, v.x, v.y, v.width, v.height, v.volume));
 }
 
-function applyOptimalLayout() {
+function applySingleColumnLayout() {
   const boxes = document.querySelectorAll('.video-box');
   let top = 10;
   boxes.forEach(box => {
