@@ -99,12 +99,6 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   }
 
-  const boxes = document.querySelectorAll(".video-box");
-  if (x === null && y === null && boxes.length > 0) {
-    const last = boxes[boxes.length - 1];
-    y = parseFloat(last.style.top) + last.offsetHeight + 20;
-  }
-
   const box = document.createElement("div");
   box.className = "video-box";
   box.style.width = width + "px";
@@ -166,8 +160,8 @@ function makeDraggableAndResizable(el) {
       listeners: {
         move(event) {
           const target = event.target;
-          let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
-          let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+          let x = (parseFloat(target.style.left) || 0) + event.dx;
+          let y = (parseFloat(target.style.top) || 0) + event.dy;
           target.style.left = x + 'px';
           target.style.top = y + 'px';
           target.setAttribute('data-x', x);
@@ -179,18 +173,20 @@ function makeDraggableAndResizable(el) {
       edges: { left: true, right: true, bottom: true, top: true },
       listeners: {
         move(event) {
-          const iframe = event.target.querySelector('iframe');
+          const target = event.target;
+          const iframe = target.querySelector('iframe');
           if (iframe) iframe.style.pointerEvents = 'none';
-          let x = (parseFloat(event.target.getAttribute('data-x')) || 0) + event.deltaRect.left;
-          let y = (parseFloat(event.target.getAttribute('data-y')) || 0) + event.deltaRect.top;
-          Object.assign(event.target.style, {
-            width: `${event.rect.width}px`,
-            height: `${event.rect.height}px`,
-            left: `${x}px`,
-            top: `${y}px`
-          });
-          event.target.setAttribute('data-x', x);
-          event.target.setAttribute('data-y', y);
+
+          let x = (parseFloat(target.style.left) || 0) + event.deltaRect.left;
+          let y = (parseFloat(target.style.top) || 0) + event.deltaRect.top;
+
+          target.style.width = `${event.rect.width}px`;
+          target.style.height = `${event.rect.height}px`;
+          target.style.left = `${x}px`;
+          target.style.top = `${y}px`;
+
+          target.setAttribute('data-x', x);
+          target.setAttribute('data-y', y);
         },
         end(event) {
           const iframe = event.target.querySelector('iframe');
@@ -233,7 +229,7 @@ function loadSavedVideos() {
 function applySingleColumnLayout() {
   const boxes = document.querySelectorAll('.video-box');
   let top = 10;
-  const width = window.innerWidth - 20; // 画面いっぱい
+  const width = window.innerWidth - 20;
   const height = (width / 16) * 9 + 40;
 
   boxes.forEach(box => {
@@ -254,6 +250,7 @@ function applyGridLayout(cols = 2) {
   const screenWidth = window.innerWidth;
   const width = screenWidth / cols - 40;
   const height = (width / 16) * 9 + 40;
+
   boxes.forEach((box, index) => {
     const col = index % cols;
     const row = Math.floor(index / cols);
@@ -266,6 +263,7 @@ function applyGridLayout(cols = 2) {
     box.setAttribute("data-x", x);
     box.setAttribute("data-y", y);
   });
+
   saveState();
 }
 
