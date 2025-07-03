@@ -1,79 +1,16 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>自由配置 YouTube プレイヤー</title>
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
-      overflow: hidden;
-    }
-    #controls {
-      padding: 10px;
-      background: #111;
-      white-space: nowrap;
-    }
-    input[type="text"] {
-      width: 300px;
-      padding: 5px;
-      margin-right: 10px;
-    }
-    button {
-      padding: 6px 12px;
-      cursor: pointer;
-      margin-right: 5px;
-    }
-    #container {
-      position: relative;
-      width: 100vw;
-      height: calc(100vh - 60px);
-      overflow: auto;
-    }
-    .video-box {
-      position: absolute;
-      border: 2px solid #444;
-      overflow: hidden;
-      background: #111;
-    }
-    .video-box iframe {
-      width: 100%;
-      height: calc(100% - 40px);
-      display: block;
-    }
-    .controls {
-      height: 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #222;
-      padding: 2px 6px;
-      gap: 6px;
-    }
-    .volume-slider {
-      width: 100px;
-    }
-    .delete-btn {
-      background: red;
-      color: white;
-      border: none;
-      padding: 2px 6px;
-      cursor: pointer;
-    }
-  </style>
-</head>
+<!-- 中略（head・style・interactjs読み込み部分はそのまま） -->
+
 <body>
 <div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
   <button onclick="saveState()">保存</button>
-  <button onclick="applySmartLayout()">スマホ配置</button>
+  <button onclick="applyOptimalLayout()">最適配置</button>
   <button onclick="applyGridLayout(2)">2×2配置</button>
-  <button onclick="applyGridLayout(4)">4×4配置</button>
+  <button onclick="applyGridLayout(3)">3×3配置</button>
 </div>
 <div id="container"></div>
+
 <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
 <script>
 let zIndexCounter = 1000;
@@ -89,6 +26,7 @@ function extractVideoID(url) {
 
 function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, volume = 100) {
   const container = document.getElementById("container");
+
   if (!videoId) {
     const url = document.getElementById("videoUrl").value;
     videoId = extractVideoID(url);
@@ -97,13 +35,24 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
       return;
     }
   }
+
+  // 最下段の位置を取得して並べて配置
+  const existingBoxes = document.querySelectorAll(".video-box");
+  let newY = 50;
+  if (existingBoxes.length > 0) {
+    const lastBox = existingBoxes[existingBoxes.length - 1];
+    const lastY = parseFloat(lastBox.getAttribute("data-y")) || 0;
+    const lastHeight = lastBox.offsetHeight || 270;
+    newY = lastY + lastHeight + 20;
+  }
+
   const box = document.createElement("div");
   box.className = "video-box";
   box.style.width = width + "px";
   box.style.height = height + "px";
-  box.style.transform = `translate(${x}px, ${y}px)`;
+  box.style.transform = `translate(${x}px, ${newY}px)`;
   box.setAttribute("data-x", x);
-  box.setAttribute("data-y", y);
+  box.setAttribute("data-y", newY);
   box.style.zIndex = zIndexCounter++;
 
   const iframe = document.createElement("iframe");
@@ -127,13 +76,16 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
         func: "setVolume",
         args: [volSlider.value]
       }), "*");
-    } catch (e) { console.warn("音量設定失敗"); }
+    } catch (e) {}
   };
 
   const delBtn = document.createElement("button");
   delBtn.className = "delete-btn";
   delBtn.textContent = "×";
-  delBtn.onclick = () => container.removeChild(box);
+  delBtn.onclick = () => {
+    container.removeChild(box);
+    saveState(); // 自動保存
+  };
 
   controls.appendChild(volSlider);
   controls.appendChild(delBtn);
@@ -145,6 +97,8 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   makeDraggableAndResizable(box);
 
   document.getElementById("videoUrl").value = "";
+
+  saveState(); // 自動保存
 }
 
 function makeDraggableAndResizable(el) {
@@ -208,7 +162,6 @@ function saveState() {
     data.push({ videoId, x, y, width, height, volume });
   });
   localStorage.setItem('videoData', JSON.stringify(data));
-  alert('保存しました！');
 }
 
 function loadSavedVideos() {
@@ -216,7 +169,7 @@ function loadSavedVideos() {
   data.forEach(v => addVideo(v.videoId, v.x, v.y, v.width, v.height, v.volume));
 }
 
-function applySmartLayout() {
+function applyOptimalLayout() {
   const boxes = document.querySelectorAll('.video-box');
   let top = 10;
   boxes.forEach(box => {
