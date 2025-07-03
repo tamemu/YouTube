@@ -123,6 +123,10 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   volSlider.max = 100;
   volSlider.value = volume;
   volSlider.className = "volume-slider";
+
+  volSlider.onmousedown = e => e.stopPropagation();
+  volSlider.ontouchstart = e => e.stopPropagation();
+
   volSlider.oninput = () => {
     try {
       iframe.contentWindow.postMessage(JSON.stringify({
@@ -167,15 +171,21 @@ function makeDraggableAndResizable(el) {
           target.setAttribute('data-x', x);
           target.setAttribute('data-y', y);
         }
-      }
+      },
+      ignoreFrom: 'input'
     })
     .resizable({
-      edges: { left: true, right: true, bottom: true, top: true },
+      edges: { left: true, right: true, bottom: true, top: false },
       listeners: {
         move(event) {
           const target = event.target;
           const iframe = target.querySelector('iframe');
           if (iframe) iframe.style.pointerEvents = 'none';
+
+          const edges = event.edges;
+          const isCorner =
+            (edges.right && edges.bottom) || (edges.left && edges.bottom);
+          if (!isCorner) return;
 
           let x = (parseFloat(target.style.left) || 0) + event.deltaRect.left;
           let y = (parseFloat(target.style.top) || 0) + event.deltaRect.top;
