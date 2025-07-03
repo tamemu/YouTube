@@ -1,10 +1,73 @@
-<!-- 中略（head・style・interactjs読み込み部分はそのまま） -->
-
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>自由配置 YouTube プレイヤー</title>
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #fff;
+      font-family: sans-serif;
+      overflow: hidden;
+    }
+    #controls {
+      padding: 10px;
+      background: #111;
+      white-space: nowrap;
+    }
+    input[type="text"] {
+      width: 300px;
+      padding: 5px;
+      margin-right: 10px;
+    }
+    button {
+      padding: 6px 12px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    #container {
+      position: relative;
+      width: 100vw;
+      height: calc(100vh - 60px);
+      overflow: auto;
+    }
+    .video-box {
+      position: absolute;
+      border: 2px solid #444;
+      overflow: hidden;
+      background: #111;
+    }
+    .video-box iframe {
+      width: 100%;
+      height: calc(100% - 40px);
+      display: block;
+    }
+    .controls {
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #222;
+      padding: 2px 6px;
+      gap: 6px;
+    }
+    .volume-slider {
+      width: 100px;
+    }
+    .delete-btn {
+      background: red;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
 <body>
 <div id="controls">
   <input type="text" id="videoUrl" placeholder="YouTubeのURLを入力">
   <button onclick="addVideo()">動画を追加</button>
-  <button onclick="saveState()">保存</button>
   <button onclick="applyOptimalLayout()">最適配置</button>
   <button onclick="applyGridLayout(2)">2×2配置</button>
   <button onclick="applyGridLayout(3)">3×3配置</button>
@@ -36,12 +99,12 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   }
 
-  // 最下段の位置を取得して並べて配置
+  // 縦に追加する位置を決定
   const existingBoxes = document.querySelectorAll(".video-box");
   let newY = 50;
   if (existingBoxes.length > 0) {
     const lastBox = existingBoxes[existingBoxes.length - 1];
-    const lastY = parseFloat(lastBox.getAttribute("data-y")) || 0;
+    const lastY = parseFloat(lastBox.style.top) || 0;
     const lastHeight = lastBox.offsetHeight || 270;
     newY = lastY + lastHeight + 20;
   }
@@ -50,7 +113,8 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   box.className = "video-box";
   box.style.width = width + "px";
   box.style.height = height + "px";
-  box.style.transform = `translate(${x}px, ${newY}px)`;
+  box.style.left = x + "px";
+  box.style.top = newY + "px";
   box.setAttribute("data-x", x);
   box.setAttribute("data-y", newY);
   box.style.zIndex = zIndexCounter++;
@@ -84,7 +148,7 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   delBtn.textContent = "×";
   delBtn.onclick = () => {
     container.removeChild(box);
-    saveState(); // 自動保存
+    saveState();
   };
 
   controls.appendChild(volSlider);
@@ -97,8 +161,7 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
   makeDraggableAndResizable(box);
 
   document.getElementById("videoUrl").value = "";
-
-  saveState(); // 自動保存
+  saveState();
 }
 
 function makeDraggableAndResizable(el) {
@@ -106,12 +169,13 @@ function makeDraggableAndResizable(el) {
     .draggable({
       listeners: {
         move(event) {
-          const { dx, dy } = event;
-          const x = (parseFloat(el.getAttribute('data-x')) || 0) + dx;
-          const y = (parseFloat(el.getAttribute('data-y')) || 0) + dy;
-          el.style.transform = `translate(${x}px, ${y}px)`;
-          el.setAttribute('data-x', x);
-          el.setAttribute('data-y', y);
+          const target = event.target;
+          let x = (parseFloat(target.getAttribute('data-x')) || 0) + event.dx;
+          let y = (parseFloat(target.getAttribute('data-y')) || 0) + event.dy;
+          target.style.left = x + 'px';
+          target.style.top = y + 'px';
+          target.setAttribute('data-x', x);
+          target.setAttribute('data-y', y);
         }
       }
     })
@@ -126,7 +190,8 @@ function makeDraggableAndResizable(el) {
           Object.assign(event.target.style, {
             width: `${event.rect.width}px`,
             height: `${event.rect.height}px`,
-            transform: `translate(${x}px, ${y}px)`
+            left: `${x}px`,
+            top: `${y}px`
           });
           event.target.setAttribute('data-x', x);
           event.target.setAttribute('data-y', y);
@@ -177,11 +242,13 @@ function applyOptimalLayout() {
     const height = (width / 16) * 9 + 40;
     box.style.width = width + "px";
     box.style.height = height + "px";
-    box.style.transform = `translate(10px, ${top}px)`;
+    box.style.left = "10px";
+    box.style.top = top + "px";
     box.setAttribute("data-x", 10);
     box.setAttribute("data-y", top);
     top += height + 20;
   });
+  saveState();
 }
 
 function applyGridLayout(cols = 2) {
@@ -196,10 +263,12 @@ function applyGridLayout(cols = 2) {
     const y = row * (height + 20) + 10;
     box.style.width = width + "px";
     box.style.height = height + "px";
-    box.style.transform = `translate(${x}px, ${y}px)`;
+    box.style.left = `${x}px`;
+    box.style.top = `${y}px`;
     box.setAttribute("data-x", x);
     box.setAttribute("data-y", y);
   });
+  saveState();
 }
 
 window.onload = loadSavedVideos;
