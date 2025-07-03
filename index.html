@@ -99,7 +99,6 @@ function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, vol
     }
   }
 
-  // 自動縦並び位置
   const boxes = document.querySelectorAll(".video-box");
   if (x === null && y === null && boxes.length > 0) {
     const last = boxes[boxes.length - 1];
@@ -234,9 +233,10 @@ function loadSavedVideos() {
 function applySingleColumnLayout() {
   const boxes = document.querySelectorAll('.video-box');
   let top = 10;
+  const width = window.innerWidth - 20; // 画面いっぱい
+  const height = (width / 16) * 9 + 40;
+
   boxes.forEach(box => {
-    const width = Math.min(window.innerWidth - 20, 360);
-    const height = (width / 16) * 9 + 40;
     box.style.width = width + "px";
     box.style.height = height + "px";
     box.style.left = "10px";
@@ -245,6 +245,7 @@ function applySingleColumnLayout() {
     box.setAttribute("data-y", top);
     top += height + 20;
   });
+
   saveState();
 }
 
