@@ -207,16 +207,40 @@
       box.append(img, close, up, down);
 
       box.onclick = () => {
-        if (box.querySelector("iframe")) return;
-        const iframe = document.createElement("iframe");
-        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
-        iframe.frameBorder = 0;
-        iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
-        iframe.allowFullscreen = true;
-        box.innerHTML = "";
-        box.append(close, up, down, iframe);
-        saveState();
-      };
+  if (box.querySelector("iframe")) return;
+
+  const iframe = document.createElement("iframe");
+  iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
+  iframe.frameBorder = 0;
+  iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
+  iframe.allowFullscreen = true;
+  iframe.id = `player-${id}`;
+
+  // 音量スライダー
+  const volumeSlider = document.createElement("input");
+  volumeSlider.type = "range";
+  volumeSlider.min = 0;
+  volumeSlider.max = 100;
+  volumeSlider.value = 100;
+  volumeSlider.style.width = "100%";
+  volumeSlider.style.marginTop = "4px";
+
+  box.innerHTML = "";
+  box.append(close, up, down, iframe, volumeSlider);
+
+  const ytPlayer = new YT.Player(iframe, {
+    events: {
+      onReady: event => {
+        event.target.setPlaybackRate(2);
+        event.target.setVolume(volumeSlider.value);
+        volumeSlider.oninput = () => event.target.setVolume(volumeSlider.value);
+      }
+    }
+  });
+
+  saveState();
+};
+
 
       c.appendChild(box);
     }
