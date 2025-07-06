@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>軽量版 YouTube プレイヤー（リストトグル＋並び替え付き）</title>
+  <title>軽量版 YouTube プレイヤー（ドロップダウン＋並び替え付き）</title>
   <style>
     body {
       margin: 0;
@@ -83,9 +83,8 @@
     </select>
     <button onclick="clearFilters()">全解除</button>
 
-    <!-- リスト + トグルボタン -->
-    <select id="sheetVideoList" multiple size="1"></select>
-    <button onclick="toggleList()">▽</button>
+    <!-- 通常のドロップダウン -->
+    <select id="sheetVideoList"></select>
     <button onclick="addSelectedVideos()">動画を追加</button>
   </div>
 
@@ -115,7 +114,7 @@
 
     function populateFilters() {
       const mainSel = document.getElementById("mainCategory");
-      const subSel = document.getElementById("subCategory");
+      const subSel  = document.getElementById("subCategory");
       const mains = [...new Set(videoData.map(v=>v.main))].sort();
       const subs  = [...new Set(videoData.map(v=>v.sub))].sort();
       mainSel.innerHTML = '<option value="">大分類</option>';
@@ -141,25 +140,20 @@
 
     function clearFilters() {
       document.getElementById("mainCategory").value = "";
-      document.getElementById("subCategory").value = "";
+      document.getElementById("subCategory").value  = "";
       filterVideos();
     }
 
-    function toggleList() {
-      const list = document.getElementById("sheetVideoList");
-      list.size = list.size > 1 ? 1 : 6;
-    }
-
     function addSelectedVideos() {
-      const opts = [...document.getElementById("sheetVideoList").selectedOptions];
-      const c = document.getElementById("container");
-      if (c.children.length + opts.length > MAX_VIDEOS) {
+      const list = document.getElementById("sheetVideoList");
+      const url  = list.value;
+      const id   = extractVideoID(url);
+      const c    = document.getElementById("container");
+      if (!id) return;
+      if (c.children.length >= MAX_VIDEOS) {
         return alert("最大9件まで追加できます");
       }
-      opts.forEach(o=> {
-        const id = extractVideoID(o.value);
-        if (id) createThumbnail(id);
-      });
+      createThumbnail(id);
       saveState();
     }
 
@@ -168,29 +162,30 @@
       const box = document.createElement("div");
       box.className = "video-thumb";
       box.dataset.videoId = id;
-      // サムネイル
+
       const img = document.createElement("img");
       img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
       img.loading = "lazy";
       box.appendChild(img);
-      // 削除ボタン
+
       const close = document.createElement("button");
       close.className = "remove-btn";
       close.textContent = "×";
       close.onclick = e=>{ e.stopPropagation(); box.remove(); saveState(); };
-      // ↑↓ボタン
+
       const up = document.createElement("button");
       up.className = "move-btn move-up";
       up.textContent = "↑";
       up.onclick = e=>{ e.stopPropagation(); moveBox(box,-1); };
+
       const down = document.createElement("button");
       down.className = "move-btn move-down";
       down.textContent = "↓";
       down.onclick = e=>{ e.stopPropagation(); moveBox(box,1); };
-      // 組み込み
+
       box.append(close, up, down);
-      // クリックでiframe化
-      box.onclick = ()=>{
+
+      box.onclick = () => {
         if (box.querySelector("iframe")) return;
         const iframe = document.createElement("iframe");
         iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
@@ -201,13 +196,14 @@
         box.append(close, up, down, iframe);
         saveState();
       };
+
       c.appendChild(box);
     }
 
     function moveBox(box, dir) {
       const c = document.getElementById("container");
       const arr = Array.from(c.children);
-      const i = arr.indexOf(box), j = i+dir;
+      const i = arr.indexOf(box), j = i + dir;
       if (j<0||j>=arr.length) return;
       if (dir>0) c.insertBefore(arr[j], box);
       else       c.insertBefore(box, arr[j]);
@@ -225,7 +221,10 @@
         .forEach(id=> createThumbnail(id));
     }
 
-    window.onload = ()=>{ loadSpreadsheet(); loadState(); };
+    window.onload = () => {
+      loadSpreadsheet();
+      loadState();
+    };
   </script>
 </body>
 </html>
