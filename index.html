@@ -119,7 +119,11 @@
       volumeSlider.max = 100;
       volumeSlider.value = volume;
       volumeSlider.className = "volume-slider";
-      volumeSlider.onmousedown = e => e.stopPropagation();
+
+      // 👇 ドラッグ操作をスライダー上で無効化
+      volumeSlider.addEventListener("mousedown", e => e.stopPropagation());
+      volumeSlider.addEventListener("touchstart", e => e.stopPropagation());
+
       volumeSlider.oninput = () => {
         iframe.contentWindow.postMessage(JSON.stringify({
           event: "command",
@@ -160,6 +164,7 @@
           }
         })
         .resizable({
+          // ⛔ 上（top）はリサイズ不可
           edges: { left: true, right: true, bottom: true, top: false },
           listeners: {
             move(event) {
