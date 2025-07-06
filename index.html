@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>軽量版 YouTube プレイヤー（並び替え付き）</title>
+  <title>軽量版 YouTube プレイヤー（リストトグル＋並び替え付き）</title>
   <style>
     body {
       margin: 0;
@@ -75,12 +75,20 @@
 </head>
 <body>
   <div id="controls">
-    <select id="mainCategory" onchange="filterVideos()"><option value="">大分類</option></select>
-    <select id="subCategory" onchange="filterVideos()"><option value="">小分類</option></select>
+    <select id="mainCategory" onchange="filterVideos()">
+      <option value="">大分類</option>
+    </select>
+    <select id="subCategory" onchange="filterVideos()">
+      <option value="">小分類</option>
+    </select>
     <button onclick="clearFilters()">全解除</button>
-    <select id="sheetVideoList" multiple size="1" onclick="expandList()" onblur="shrinkList()"></select>
+
+    <!-- リスト + トグルボタン -->
+    <select id="sheetVideoList" multiple size="1"></select>
+    <button onclick="toggleList()">▽</button>
     <button onclick="addSelectedVideos()">動画を追加</button>
   </div>
+
   <div id="container"></div>
 
   <script>
@@ -89,8 +97,8 @@
     let videoData = [];
 
     function extractVideoID(url) {
-      const match = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[&?]|$)/);
-      return match ? match[1] : null;
+      const m = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[&?]|$)/);
+      return m ? m[1] : null;
     }
 
     async function loadSpreadsheet() {
@@ -98,9 +106,9 @@
       const text = await res.text();
       const lines = text.trim().split("\n").slice(1);
       videoData = lines.map(line => {
-        const [title, main, sub, url] = line.split(",").map(v => v?.replace(/"/g, "").trim());
+        const [title, main, sub, url] = line.split(",").map(v=>v.replace(/"/g,"").trim());
         return { title, main, sub, url };
-      }).filter(v => v.url);
+      }).filter(v=>v.url);
       populateFilters();
       filterVideos();
     }
@@ -108,144 +116,116 @@
     function populateFilters() {
       const mainSel = document.getElementById("mainCategory");
       const subSel = document.getElementById("subCategory");
-      const mains = [...new Set(videoData.map(v => v.main))].sort();
-      const subs = [...new Set(videoData.map(v => v.sub))].sort();
+      const mains = [...new Set(videoData.map(v=>v.main))].sort();
+      const subs  = [...new Set(videoData.map(v=>v.sub))].sort();
       mainSel.innerHTML = '<option value="">大分類</option>';
-      subSel.innerHTML = '<option value="">小分類</option>';
-      mains.forEach(val => mainSel.innerHTML += `<option value="${val}">${val}</option>`);
-      subs.forEach(val => subSel.innerHTML += `<option value="${val}">${val}</option>`);
+      subSel.innerHTML  = '<option value="">小分類</option>';
+      mains.forEach(v=> mainSel.innerHTML += `<option value="${v}">${v}</option>`);
+      subs.forEach(v=> subSel.innerHTML  += `<option value="${v}">${v}</option>`);
     }
 
     function filterVideos() {
       const main = document.getElementById("mainCategory").value;
-      const sub = document.getElementById("subCategory").value;
+      const sub  = document.getElementById("subCategory").value;
       const list = document.getElementById("sheetVideoList");
       list.innerHTML = "";
-      videoData.filter(v =>
-        (!main || v.main === main) && (!sub || v.sub === sub)
-      ).forEach(v => {
-        const opt = document.createElement("option");
-        opt.value = v.url;
-        opt.textContent = `${v.title} (${v.main}/${v.sub})`;
-        list.appendChild(opt);
-      });
+      videoData
+        .filter(v=> (!main||v.main===main) && (!sub||v.sub===sub))
+        .forEach(v=> {
+          const o = document.createElement("option");
+          o.value = v.url;
+          o.textContent = `${v.title} (${v.main}/${v.sub})`;
+          list.appendChild(o);
+        });
     }
 
-    function expandList() {
-      document.getElementById("sheetVideoList").size = 12;
+    function clearFilters() {
+      document.getElementById("mainCategory").value = "";
+      document.getElementById("subCategory").value = "";
+      filterVideos();
     }
 
-    function shrinkList() {
-      document.getElementById("sheetVideoList").size = 1;
+    function toggleList() {
+      const list = document.getElementById("sheetVideoList");
+      list.size = list.size > 1 ? 1 : 6;
     }
 
     function addSelectedVideos() {
-      const selected = [...document.getElementById("sheetVideoList").selectedOptions];
-      const container = document.getElementById("container");
-      if (container.children.length + selected.length > MAX_VIDEOS) {
-        alert("最大9件までしか追加できません");
-        return;
+      const opts = [...document.getElementById("sheetVideoList").selectedOptions];
+      const c = document.getElementById("container");
+      if (c.children.length + opts.length > MAX_VIDEOS) {
+        return alert("最大9件まで追加できます");
       }
-
-      selected.forEach(opt => {
-        const id = extractVideoID(opt.value);
+      opts.forEach(o=> {
+        const id = extractVideoID(o.value);
         if (id) createThumbnail(id);
       });
-
       saveState();
     }
 
-    function createThumbnail(videoId) {
-      const container = document.getElementById("container");
+    function createThumbnail(id) {
+      const c = document.getElementById("container");
       const box = document.createElement("div");
       box.className = "video-thumb";
-      box.dataset.videoId = videoId;
-
-      const thumb = document.createElement("img");
-      thumb.src = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-      thumb.alt = "サムネイル";
-      thumb.loading = "lazy";
-      box.appendChild(thumb);
-
+      box.dataset.videoId = id;
+      // サムネイル
+      const img = document.createElement("img");
+      img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+      img.loading = "lazy";
+      box.appendChild(img);
+      // 削除ボタン
       const close = document.createElement("button");
       close.className = "remove-btn";
       close.textContent = "×";
-      close.onclick = (e) => {
-        e.stopPropagation();
-        container.removeChild(box);
-        saveState();
-      };
-
-      // ↑↓ ボタン追加
-      const upBtn = document.createElement("button");
-      upBtn.className = "move-btn move-up";
-      upBtn.textContent = "↑";
-      upBtn.onclick = (e) => {
-        e.stopPropagation();
-        moveBox(box, -1);
-      };
-
-      const downBtn = document.createElement("button");
-      downBtn.className = "move-btn move-down";
-      downBtn.textContent = "↓";
-      downBtn.onclick = (e) => {
-        e.stopPropagation();
-        moveBox(box, 1);
-      };
-
-      box.appendChild(close);
-      box.appendChild(upBtn);
-      box.appendChild(downBtn);
-
-      box.onclick = () => {
+      close.onclick = e=>{ e.stopPropagation(); box.remove(); saveState(); };
+      // ↑↓ボタン
+      const up = document.createElement("button");
+      up.className = "move-btn move-up";
+      up.textContent = "↑";
+      up.onclick = e=>{ e.stopPropagation(); moveBox(box,-1); };
+      const down = document.createElement("button");
+      down.className = "move-btn move-down";
+      down.textContent = "↓";
+      down.onclick = e=>{ e.stopPropagation(); moveBox(box,1); };
+      // 組み込み
+      box.append(close, up, down);
+      // クリックでiframe化
+      box.onclick = ()=>{
         if (box.querySelector("iframe")) return;
         const iframe = document.createElement("iframe");
-        iframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0`;
+        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
         iframe.frameBorder = 0;
         iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
         iframe.allowFullscreen = true;
-        box.innerHTML = ""; // 既存ボタン消す
-        box.appendChild(close);
-        box.appendChild(upBtn);
-        box.appendChild(downBtn);
-        box.appendChild(iframe);
+        box.innerHTML = "";
+        box.append(close, up, down, iframe);
         saveState();
       };
-
-      container.appendChild(box);
+      c.appendChild(box);
     }
 
-    function moveBox(box, direction) {
-      const container = document.getElementById("container");
-      const boxes = Array.from(container.children);
-      const index = boxes.indexOf(box);
-      const newIndex = index + direction;
-
-      if (newIndex < 0 || newIndex >= boxes.length) return;
-
-      if (direction > 0) {
-        container.insertBefore(boxes[newIndex], box);
-      } else {
-        container.insertBefore(box, boxes[newIndex]);
-      }
-
+    function moveBox(box, dir) {
+      const c = document.getElementById("container");
+      const arr = Array.from(c.children);
+      const i = arr.indexOf(box), j = i+dir;
+      if (j<0||j>=arr.length) return;
+      if (dir>0) c.insertBefore(arr[j], box);
+      else       c.insertBefore(box, arr[j]);
       saveState();
     }
 
     function saveState() {
-      const ids = [...document.querySelectorAll(".video-thumb")].map(box => box.dataset.videoId);
+      const ids = Array.from(document.querySelectorAll(".video-thumb"))
+                       .map(b=>b.dataset.videoId);
       localStorage.setItem("videoThumbs", JSON.stringify(ids));
     }
 
     function loadState() {
-      const data = JSON.parse(localStorage.getItem("videoThumbs") || "[]");
-      data.forEach(id => createThumbnail(id));
+      JSON.parse(localStorage.getItem("videoThumbs")||"[]")
+        .forEach(id=> createThumbnail(id));
     }
 
-    window.onload = () => {
-      loadSpreadsheet();
-      loadState();
-    };
+    window.onload = ()=>{ loadSpreadsheet(); loadState(); };
   </script>
 </body>
 </html>
