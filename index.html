@@ -186,69 +186,70 @@
     }
 
     function createThumbnail(id) {
-      const c = document.getElementById("container");
-      const box = document.createElement("div");
-      box.className = "video-thumb";
-      box.dataset.videoId = id;
+  const c = document.getElementById("container");
+  const box = document.createElement("div");
+  box.className = "video-thumb";
+  box.dataset.videoId = id;
 
-      const img = document.createElement("img");
-      img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-      img.loading = "lazy";
+  const img = document.createElement("img");
+  img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+  img.loading = "lazy";
 
-      const close = document.createElement("button");
-      close.className = "remove-btn";
-      close.textContent = "×";
-      close.onclick = e => { e.stopPropagation(); box.remove(); saveState(); };
+  const close = document.createElement("button");
+  close.className = "remove-btn";
+  close.textContent = "×";
+  close.onclick = e => { e.stopPropagation(); box.remove(); saveState(); };
 
-      const up = document.createElement("button");
-      up.className = "move-btn move-up";
-      up.textContent = "↑";
-      up.onclick = e => { e.stopPropagation(); moveBox(box, -1); };
+  const up = document.createElement("button");
+  up.className = "move-btn move-up";
+  up.textContent = "↑";
+  up.onclick = e => { e.stopPropagation(); moveBox(box, -1); };
 
-      const down = document.createElement("button");
-      down.className = "move-btn move-down";
-      down.textContent = "↓";
-      down.onclick = e => { e.stopPropagation(); moveBox(box, 1); };
+  const down = document.createElement("button");
+  down.className = "move-btn move-down";
+  down.textContent = "↓";
+  down.onclick = e => { e.stopPropagation(); moveBox(box, 1); };
 
-      const volumeSlider = document.createElement("input");
-      volumeSlider.type = "range";
-      volumeSlider.min = 0;
-      volumeSlider.max = 100;
-      volumeSlider.value = getSavedVolume(id);
-      volumeSlider.className = "volume-slider";
+  box.append(img, close, up, down);
 
-      box.append(img, close, up, down, volumeSlider);
+  box.onclick = () => {
+    if (box.querySelector("iframe")) return;
 
-      box.onclick = () => {
-        if (box.querySelector("iframe")) return;
+    const iframe = document.createElement("iframe");
+    iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
+    iframe.frameBorder = 0;
+    iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
+    iframe.allowFullscreen = true;
 
-        const iframe = document.createElement("iframe");
-        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
-        iframe.frameBorder = 0;
-        iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
-        iframe.allowFullscreen = true;
+    const volumeSlider = document.createElement("input");
+    volumeSlider.type = "range";
+    volumeSlider.min = 0;
+    volumeSlider.max = 100;
+    volumeSlider.value = getSavedVolume(id);
+    volumeSlider.className = "volume-slider";
 
-        box.innerHTML = "";
-        box.append(close, up, down, iframe, volumeSlider);
+    box.innerHTML = "";
+    box.append(close, up, down, iframe, volumeSlider);
 
-        const ytPlayer = new YT.Player(iframe, {
-          events: {
-            onReady: event => {
-              event.target.setPlaybackRate(2);
-              event.target.setVolume(volumeSlider.value);
-              volumeSlider.oninput = () => {
-                event.target.setVolume(volumeSlider.value);
-                saveVolume(id, volumeSlider.value);
-              };
-            }
-          }
-        });
+    const ytPlayer = new YT.Player(iframe, {
+      events: {
+        onReady: event => {
+          event.target.setPlaybackRate(2);
+          event.target.setVolume(volumeSlider.value);
+          volumeSlider.oninput = () => {
+            event.target.setVolume(volumeSlider.value);
+            saveVolume(id, volumeSlider.value);
+          };
+        }
+      }
+    });
 
-        saveState();
-      };
+    saveState();
+  };
 
-      c.appendChild(box);
-    }
+  c.appendChild(box);
+}
+
 
     function moveBox(box, dir) {
       const c = document.getElementById("container");
