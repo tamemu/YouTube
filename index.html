@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>カテゴリ選択付き YouTubeプレイヤー</title>
+  <title>自由配置 YouTube プレイヤー</title>
   <style>
     body {
       margin: 0;
@@ -12,23 +12,14 @@
       overflow: hidden;
     }
     #controls {
-      padding: 10px;
+      padding: 8px 12px;
       background: #111;
-      white-space: nowrap;
+      font-size: 14px;
     }
     select, input, button {
-      margin: 4px;
+      font-size: 14px;
       padding: 4px;
-    }
-    #filterArea {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 6px;
-    }
-    #sheetVideoList {
-      width: 300px;
-      height: 120px;
+      margin: 2px;
     }
     #container {
       position: relative;
@@ -65,34 +56,47 @@
 </head>
 <body>
   <div id="controls">
-    <div id="filterArea">
-      <select id="mainCategory" onchange="filterVideos()">
-        <option value="">-- 大分類 --</option>
-      </select>
-      <select id="subCategory" onchange="filterVideos()">
-        <option value="">-- 小分類 --</option>
-      </select>
-      <button onclick="clearFilters()">全解除</button>
+    <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px;">
+      
+      <!-- 左：カテゴリ -->
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div style="display: flex; gap: 6px;">
+          <select id="mainCategory" onchange="filterVideos()">
+            <option value="">-- 大分類 --</option>
+          </select>
+          <select id="subCategory" onchange="filterVideos()">
+            <option value="">-- 小分類 --</option>
+          </select>
+          <button onclick="clearFilters()">全解除</button>
+        </div>
+        <select id="sheetVideoList" multiple size="5" style="width: 320px;"></select>
+        <button onclick="addSelectedVideos()">選択した動画を追加</button>
+      </div>
+
+      <!-- 右：URLと操作 -->
+      <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div>
+          <input id="videoUrl" placeholder="YouTubeのURL" style="width: 260px;">
+          <button onclick="addVideo()">URLから追加</button>
+        </div>
+        <div>
+          <button onclick="applyLayout('1x1')">1×1配置</button>
+          <button onclick="applyLayout('2x2')">2×2配置</button>
+          <button onclick="applyLayout('3x3')">3×3配置</button>
+        </div>
+      </div>
     </div>
-    <select id="sheetVideoList" multiple></select>
-    <button onclick="addSelectedVideos()">選択した動画を追加</button>
-    <br>
-    <input id="videoUrl" placeholder="YouTubeのURL">
-    <button onclick="addVideo()">URLから追加</button>
-    <button onclick="applyLayout('1x1')">1×1配置</button>
-    <button onclick="applyLayout('2x2')">2×2配置</button>
-    <button onclick="applyLayout('3x3')">3×3配置</button>
   </div>
+
   <div id="container"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
     let zIndex = 1000;
     let playerMap = {};
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
-
-    let videoData = []; // 全データ保持
+    let videoData = [];
 
     function extractVideoID(url) {
       const match = url.match(/(?:\/|v=|embed\/|shorts\/|live\/|\.be\/)([a-zA-Z0-9_-]{11})/);
@@ -102,41 +106,36 @@
     async function loadSpreadsheet() {
       const res = await fetch(sheetUrl);
       const text = await res.text();
-      const lines = text.trim().split("\n").slice(1); // skip header
-
+      const lines = text.trim().split("\n").slice(1);
       videoData = lines.map(line => {
-        const [name, main, sub, url] = line.split(",").map(v => v?.replace(/"/g, "").trim());
-        return { name, main, sub, url };
+        const [title, main, sub, url] = line.split(",").map(v => v?.replace(/"/g, "").trim());
+        return { title, main, sub, url };
       }).filter(v => v.url);
 
       populateFilters();
-      filterVideos(); // 初期表示
+      filterVideos();
     }
 
     function populateFilters() {
-      const mainSet = new Set();
-      const subSet = new Set();
-
-      videoData.forEach(v => {
-        mainSet.add(v.main);
-        subSet.add(v.sub);
-      });
-
       const mainSel = document.getElementById("mainCategory");
       const subSel = document.getElementById("subCategory");
-      [mainSel, subSel].forEach(sel => sel.innerHTML = '<option value="">-- 全て --</option>');
+      const mains = [...new Set(videoData.map(v => v.main))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub))].sort();
 
-      [...mainSet].sort().forEach(v => {
+      mainSel.innerHTML = '<option value="">-- 大分類 --</option>';
+      subSel.innerHTML = '<option value="">-- 小分類 --</option>';
+
+      mains.forEach(val => {
         const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
+        opt.value = val;
+        opt.textContent = val;
         mainSel.appendChild(opt);
       });
 
-      [...subSet].sort().forEach(v => {
+      subs.forEach(val => {
         const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
+        opt.value = val;
+        opt.textContent = val;
         subSel.appendChild(opt);
       });
     }
@@ -147,14 +146,14 @@
       const list = document.getElementById("sheetVideoList");
       list.innerHTML = "";
 
-      videoData
-        .filter(v => (!main || v.main === main) && (!sub || v.sub === sub))
-        .forEach(v => {
-          const opt = document.createElement("option");
-          opt.value = v.url;
-          opt.textContent = `${v.name} (${v.main}/${v.sub})`;
-          list.appendChild(opt);
-        });
+      videoData.filter(v =>
+        (!main || v.main === main) && (!sub || v.sub === sub)
+      ).forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v.url;
+        opt.textContent = `${v.title} (${v.main}/${v.sub})`;
+        list.appendChild(opt);
+      });
     }
 
     function clearFilters() {
@@ -214,8 +213,6 @@
       volumeSlider.max = 100;
       volumeSlider.value = volume;
       volumeSlider.className = "volume-slider";
-      volumeSlider.addEventListener("mousedown", e => e.stopPropagation());
-      volumeSlider.addEventListener("touchstart", e => e.stopPropagation());
 
       const closeBtn = document.createElement("button");
       closeBtn.className = "close-btn";
@@ -342,7 +339,7 @@
     }
 
     function onYouTubeIframeAPIReady() {
-      // 初期化後ロード
+      // IFrame API 準備後に必要なら処理追加
     }
 
     window.onload = () => {
