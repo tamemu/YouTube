@@ -21,6 +21,12 @@
       padding: 4px;
       margin: 2px;
     }
+    #sheetVideoList {
+      width: 360px;
+      background: #222;
+      color: #fff;
+      border: 1px solid #444;
+    }
     #container {
       position: relative;
       width: 100vw;
@@ -52,12 +58,6 @@
       cursor: pointer;
       margin-left: auto;
     }
-    #sheetVideoList {
-      width: 360px;
-      background: #222;
-      color: #fff;
-      border: 1px solid #444;
-    }
   </style>
 </head>
 <body>
@@ -66,12 +66,8 @@
       <!-- 左：カテゴリ -->
       <div style="display: flex; flex-direction: column; gap: 6px;">
         <div style="display: flex; gap: 6px;">
-          <select id="mainCategory" onchange="filterVideos()">
-            <option value="">-- 大分類 --</option>
-          </select>
-          <select id="subCategory" onchange="filterVideos()">
-            <option value="">-- 小分類 --</option>
-          </select>
+          <select id="mainCategory" onchange="filterVideos()"><option value="">-- 大分類 --</option></select>
+          <select id="subCategory" onchange="filterVideos()"><option value="">-- 小分類 --</option></select>
           <button onclick="clearFilters()">全解除</button>
         </div>
         <select id="sheetVideoList" multiple size="12"></select>
@@ -95,13 +91,254 @@
 
   <div id="container"></div>
 
-  <!-- 残りのJS部分はこれまでのコードと同じ（playerMap, addVideo, saveState, loadStateなど） -->
-  <!-- 必要であれば、JS部分も再送します。 -->
   <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    // JavaScriptの処理は前回の「保存・読み込み・動画操作」などすべて維持されます。
-    // 長いため省略していますが、もし丸ごと必要でしたらお知らせください。
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
+    let zIndex = 1000;
+    let playerMap = {};
+    let videoData = [];
+
+    function extractVideoID(url) {
+      const match = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[&?]|$)/);
+      return match ? match[1] : null;
+    }
+
+    async function loadSpreadsheet() {
+      try {
+        const res = await fetch(sheetUrl);
+        const text = await res.text();
+        const lines = text.trim().split("\n").slice(1); // skip header
+        videoData = lines.map(line => {
+          const parts = line.split(",");
+          if (parts.length < 4) return null;
+          const title = parts[0]?.replace(/"/g, "").trim();
+          const main = parts[1]?.replace(/"/g, "").trim();
+          const sub = parts[2]?.replace(/"/g, "").trim();
+          const url = parts[3]?.replace(/"/g, "").trim();
+          return { title, main, sub, url };
+        }).filter(v => v && v.url);
+
+        populateFilters();
+        filterVideos();
+      } catch (err) {
+        alert("スプレッドシートの読み込みに失敗しました");
+        console.error(err);
+      }
+    }
+
+    function populateFilters() {
+      const mainSel = document.getElementById("mainCategory");
+      const subSel = document.getElementById("subCategory");
+      const mains = [...new Set(videoData.map(v => v.main))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub))].sort();
+      mainSel.innerHTML = '<option value="">-- 大分類 --</option>';
+      subSel.innerHTML = '<option value="">-- 小分類 --</option>';
+      mains.forEach(val => mainSel.innerHTML += `<option value="${val}">${val}</option>`);
+      subs.forEach(val => subSel.innerHTML += `<option value="${val}">${val}</option>`);
+    }
+
+    function filterVideos() {
+      const main = document.getElementById("mainCategory").value;
+      const sub = document.getElementById("subCategory").value;
+      const list = document.getElementById("sheetVideoList");
+      list.innerHTML = "";
+      videoData.filter(v =>
+        (!main || v.main === main) && (!sub || v.sub === sub)
+      ).forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = v.url;
+        opt.textContent = `${v.title} (${v.main}/${v.sub})`;
+        list.appendChild(opt);
+      });
+    }
+
+    function clearFilters() {
+      document.getElementById("mainCategory").value = "";
+      document.getElementById("subCategory").value = "";
+      filterVideos();
+    }
+
+    function addSelectedVideos() {
+      const selected = [...document.getElementById("sheetVideoList").selectedOptions];
+      selected.forEach(opt => {
+        const id = extractVideoID(opt.value);
+        if (id) addVideo(id);
+      });
+    }
+
+    function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, volume = 100) {
+      if (!videoId) {
+        const url = document.getElementById("videoUrl").value;
+        videoId = extractVideoID(url);
+        if (!videoId) {
+          alert("有効なYouTubeリンクを入力してください");
+          return;
+        }
+      }
+
+      const container = document.getElementById("container");
+      const box = document.createElement("div");
+      box.className = "video-box";
+      box.style.width = width + "px";
+      box.style.height = height + "px";
+      box.style.left = x + "px";
+      box.style.top = y + "px";
+      box.style.zIndex = zIndex++;
+
+      const playerId = `player_${videoId}_${Date.now()}`;
+      const playerDiv = document.createElement("div");
+      playerDiv.id = playerId;
+      playerDiv.style.width = "100%";
+      playerDiv.style.height = "calc(100% - 40px)";
+      box.appendChild(playerDiv);
+
+      const controls = document.createElement("div");
+      controls.className = "controls";
+
+      const upBtn = document.createElement("button");
+      upBtn.textContent = "↑";
+      upBtn.onclick = () => moveVideo(box, -1);
+
+      const downBtn = document.createElement("button");
+      downBtn.textContent = "↓";
+      downBtn.onclick = () => moveVideo(box, 1);
+
+      const volumeSlider = document.createElement("input");
+      volumeSlider.type = "range";
+      volumeSlider.min = 0;
+      volumeSlider.max = 100;
+      volumeSlider.value = volume;
+      volumeSlider.className = "volume-slider";
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "close-btn";
+      closeBtn.textContent = "×";
+      closeBtn.onclick = () => {
+        if (playerMap[playerId]) playerMap[playerId].destroy();
+        container.removeChild(box);
+        saveState();
+      };
+
+      controls.append(upBtn, downBtn, volumeSlider, closeBtn);
+      box.append(controls);
+      container.append(box);
+      makeDraggableAndResizable(box);
+      box.addEventListener("mousedown", () => box.style.zIndex = zIndex++);
+
+      playerMap[playerId] = new YT.Player(playerId, {
+        videoId: videoId,
+        events: {
+          onReady: event => {
+            event.target.setVolume(volume);
+            event.target.setPlaybackRate(2);
+          }
+        }
+      });
+
+      volumeSlider.oninput = () => {
+        const player = playerMap[playerId];
+        if (player) player.setVolume(volumeSlider.value);
+      };
+
+      saveState();
+    }
+
+    function moveVideo(box, direction) {
+      const container = document.getElementById("container");
+      const boxes = Array.from(container.querySelectorAll(".video-box"));
+      const index = boxes.indexOf(box);
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= boxes.length) return;
+      container.insertBefore(box, boxes[direction > 0 ? newIndex + 1 : newIndex]);
+      saveState();
+    }
+
+    function applyLayout(type) {
+      const boxes = document.querySelectorAll(".video-box");
+      let cols = { '1x1': 1, '2x2': 2, '3x3': 3 }[type] || 1;
+      const containerWidth = window.innerWidth;
+      const width = containerWidth / cols - 40;
+      const height = (width / 16) * 9 + 40;
+      boxes.forEach((box, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        box.style.width = width + "px";
+        box.style.height = height + "px";
+        box.style.left = col * (width + 20) + "px";
+        box.style.top = row * (height + 20) + "px";
+      });
+      saveState();
+    }
+
+    function makeDraggableAndResizable(el) {
+      interact(el)
+        .draggable({
+          listeners: {
+            move(event) {
+              const target = event.target;
+              const x = (parseFloat(target.style.left) || 0) + event.dx;
+              const y = (parseFloat(target.style.top) || 0) + event.dy;
+              target.style.left = x + "px";
+              target.style.top = y + "px";
+            }
+          }
+        })
+        .resizable({
+          edges: { left: true, right: true, bottom: true, top: false },
+          listeners: {
+            move(event) {
+              const target = event.target;
+              const x = (parseFloat(target.style.left) || 0) + event.deltaRect.left;
+              const y = (parseFloat(target.style.top) || 0) + event.deltaRect.top;
+              Object.assign(target.style, {
+                width: `${event.rect.width}px`,
+                height: `${event.rect.height}px`,
+                left: `${x}px`,
+                top: `${y}px`
+              });
+            },
+            end() {
+              saveState();
+            }
+          },
+          modifiers: [
+            interact.modifiers.restrictSize({
+              min: { width: 160, height: 100 },
+              max: { width: 1280, height: 800 }
+            })
+          ]
+        });
+    }
+
+    function saveState() {
+      const boxes = document.querySelectorAll(".video-box");
+      const data = Array.from(boxes).map(box => {
+        const playerDiv = box.querySelector("div[id^='player_']");
+        const match = playerDiv?.id.match(/player_([a-zA-Z0-9_-]{11})/);
+        return {
+          id: match ? match[1] : null,
+          x: parseFloat(box.style.left),
+          y: parseFloat(box.style.top),
+          width: box.offsetWidth,
+          height: box.offsetHeight,
+          volume: box.querySelector("input").value
+        };
+      }).filter(v => v.id);
+      localStorage.setItem("videoData", JSON.stringify(data));
+    }
+
+    function loadState() {
+      const data = JSON.parse(localStorage.getItem("videoData") || "[]");
+      data.forEach(v => addVideo(v.id, v.x, v.y, v.width, v.height, v.volume));
+    }
+
+    function onYouTubeIframeAPIReady() {}
+
+    window.onload = () => {
+      loadSpreadsheet();
+      loadState();
+    };
   </script>
 </body>
 </html>
