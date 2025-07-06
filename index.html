@@ -1,160 +1,121 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>自由配置 YouTube プレイヤー</title>
-  <style>
-    body { margin:0; background:#000; color:#fff; font-family:sans-serif; overflow:hidden; }
-    #controls { padding:10px; background:#111; white-space:nowrap; }
-    input[type="text"] { width:300px; padding:5px; margin-right:10px; }
-    button { padding:6px 10px; cursor:pointer; margin-right:5px; }
-    #container { position:relative; width:100vw; height:calc(100vh-60px); overflow:auto; }
-    .video-box { position:absolute; border:2px solid #444; overflow:hidden; background:#111; }
-    .video-box iframe { width:100%; height:calc(100%-40px); display:block; }
-    .controls { height:40px; display:flex; align-items:center; justify-content:flex-start;
-                background:#222; padding:2px 6px; gap:6px; position:relative; }
-    .close-btn {
-      position:absolute; top:2px; right:2px; background:red; color:#fff;
-      border:none; padding:2px 6px; cursor:pointer;
-    }
-    .volume-slider { width:100px; }
-  </style>
-</head>
-<body>
-  <div id="controls">
-    <input id="videoUrl" placeholder="YouTubeのURLを入力">
-    <button onclick="addVideo()">動画を追加</button>
-    <button onclick="setLayout('single')">1×1配置</button>
-    <button onclick="setLayout('grid2')">2×2配置</button>
-    <button onclick="setLayout('grid3')">3×3配置</button>
-  </div>
-  <div id="container"></div>
+<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>修正版プレイヤー</title><style>
+body{margin:0;background:#000;color:#fff;font-family:sans-serif;overflow:hidden;}
+#controls{padding:10px;background:#111;white-space:nowrap;}
+input,button{padding:5px;margin-right:5px;}
+#container{position:relative;width:100vw;height:calc(100vh-60px);overflow:auto;}
+.video-box{position:absolute;border:2px solid #444;background:#111;overflow:hidden;}
+.video-box iframe{width:100%;height:calc(100%-40px);}
+.controls{position:relative;display:flex;align-items:center;background:#222;height:40px;padding:2px;gap:6px;}
+.close-btn{position:absolute;top:2px;right:2px;background:red;color:#fff;border:none;padding:2px;cursor:pointer;}
+.volume-slider{width:100px;}
+</style></head><body>
+<div id="controls">
+  <input id="videoUrl" placeholder="YouTubeのURL">
+  <button onclick="addVideo()">動画を追加</button>
+  <button onclick="setLayout('single')">1×1配置</button>
+  <button onclick="setLayout('grid2')">2×2配置</button>
+  <button onclick="setLayout('grid3')">3×3配置</button>
+</div>
+<div id="container"></div>
+<script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+<script>
+let zIdx=1000, currentLayout='single';
 
-  <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
-  <script>
-    let zIndexCounter = 1000, currentLayout = 'single';
+function extractID(url) {
+  const m=url.match(/(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m?m[1]:null;
+}
 
-    // 動画追加
-    function addVideo(videoId=null,x=50,y=50,w=480,h=270,vol=100){
-      const urlElem = document.getElementById("videoUrl");
-      if(!videoId){
-        const patterns=[/(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([\w-]{11})/];
-        for(const p of patterns){
-          const m=urlElem.value.match(p);
-          if(m){ videoId=m[1]; break; }
-        }
-        if(!videoId){ alert("有効なYouTubeリンクを入力してください"); return; }
-      }
-      const box=document.createElement("div");
-      box.className="video-box"; box.style.width=w+"px"; box.style.height=h+"px";
-      box.style.left=x+"px"; box.style.top=y+"px"; box.setAttribute("data-x",x);
-      box.setAttribute("data-y",y); box.style.zIndex=zIndexCounter++;
+function addVideo(id=null,x=50,y=50,w=480,h=270,vol=100) {
+  if (!id) {
+    const url=document.getElementById('videoUrl').value;
+    id=extractID(url);
+    if (!id) return alert('有効なリンクを入力してください');
+  }
+  const box=document.createElement('div');
+  box.className='video-box'; box.style.width=w+'px';box.style.height=h+'px';
+  box.style.left=x+'px';box.style.top=y+'px';box.style.zIndex=zIdx++;
 
-      const iframe=document.createElement("iframe");
-      iframe.src=`https://www.youtube.com/embed/${videoId}?enablejsapi=1`;
-      iframe.allow="autoplay; encrypted-media"; iframe.allowFullscreen=true;
+  const iframe=document.createElement('iframe');
+  iframe.src=`https://www.youtube.com/embed/${id}?enablejsapi=1`;
+  iframe.allow='autoplay; encrypted-media';iframe.allowFullscreen=true;
 
-      const ctrl=document.createElement("div"); ctrl.className="controls";
-      const up=document.createElement("button"); up.textContent="↑"; up.onclick=()=>moveVideo(box,-1);
-      const down=document.createElement("button"); down.textContent="↓"; down.onclick=()=>moveVideo(box,1);
-      const volSlider=document.createElement("input"); volSlider.type="range";
-      volSlider.min=0;volSlider.max=100;volSlider.value=vol;volSlider.className="volume-slider";
-      volSlider.onmousedown=e=>e.stopPropagation();volSlider.ontouchstart=e=>e.stopPropagation();
-      volSlider.oninput=()=>iframe.contentWindow.postMessage(JSON.stringify({
-        event:"command",func:"setVolume",args:[volSlider.value]}),"*");
+  const ctrl=document.createElement('div');ctrl.className='controls';
+  const up=document.createElement('button'); up.textContent='↑'; up.onclick=()=>moveVideo(box,-1);
+  const down=document.createElement('button'); down.textContent='↓'; down.onclick=()=>moveVideo(box,1);
+  const volS=document.createElement('input');volS.type='range';volS.min=0;volS.max=100;volS.value=vol;
+  volS.className='volume-slider';volS.onmousedown=e=>e.stopPropagation();volS.ontouchstart=e=>e.stopPropagation();
+  volS.oninput=()=>iframe.contentWindow.postMessage(JSON.stringify({event:'command',func:'setVolume',args:[volS.value]}),'*');
+  const closeB=document.createElement('button');closeB.className='close-btn';closeB.textContent='×';
+  closeB.onclick=()=>{box.remove();saveState();};
 
-      const closeBtn=document.createElement("button"); closeBtn.className="close-btn";
-      closeBtn.textContent="×"; closeBtn.onclick=()=>{ box.remove(); saveState(); };
+  ctrl.append(up,down,volS,closeB);
+  box.append(ctrl,iframe);
+  document.getElementById('container').append(box);
+  box.addEventListener('mousedown',()=>box.style.zIndex=zIdx++);
+  interactBox(box);
+  document.getElementById('videoUrl').value='';
+}
 
-      ctrl.append(up,down,volSlider,closeBtn);
-      box.append(ctrl,iframe);
-      document.getElementById("container").append(box);
+function moveVideo(box,dir){
+  const ctr=document.getElementById('container'), vids=[...ctr.children].filter(c=>c.classList.contains('video-box'));
+  const i=vids.indexOf(box), t=i+dir;
+  if(t<0||t>=vids.length)return;
+  ctr.insertBefore(box, vids[t+(dir>0?1:0)]);
+  applyLayout(); saveState();
+}
 
-      box.addEventListener("mousedown",()=>box.style.zIndex=zIndexCounter++);
-      interactBox(box); saveState(); urlElem.value="";
-      applyLayout(); // レイアウト反映
-    }
+function interactBox(el){
+  interact(el).draggable({ listeners:{move(e){
+    const t=e.target;
+    t.style.left=(parseFloat(t.style.left)||0)+e.dx+'px';
+    t.style.top=(parseFloat(t.style.top)||0)+e.dy+'px';
+  }},ignoreFrom:'input'}).resizable({
+    edges:{left:true,right:true,bottom:true,top:false},modifiers:[interact.modifiers.restrictSize({min:{width:160,height:100},max:{width:1280,height:800}})],
+    listeners:{move(e){
+      const t=e.target, ifr=t.querySelector('iframe'); if(ifr)ifr.style.pointerEvents='none';
+      const edges=e.edges;
+      if(!( (edges.bottom&&edges.right)||(edges.bottom&&edges.left) )) return;
+      t.style.width=e.rect.width+'px';t.style.height=e.rect.height+'px';
+      t.style.left=(parseFloat(t.style.left)||0)+e.deltaRect.left+'px';
+      t.style.top=(parseFloat(t.style.top)||0)+e.deltaRect.top+'px';
+    },end(e){
+      const ifr=e.target.querySelector('iframe'); if(ifr)ifr.style.pointerEvents='auto';
+      saveState();
+    }}
+  });
+}
 
-    function moveVideo(box,dir){
-      const cont=document.getElementById("container");
-      const vids=Array.from(cont.children).filter(c=>c.classList.contains("video-box"));
-      const idx=vids.indexOf(box), tgt=idx+dir;
-      if(tgt<0||tgt>=vids.length) return;
-      cont.insertBefore(box, vids[tgt+(dir>0?1:0)]);
-      saveState(); applyLayout();
-    }
+function saveState(){
+  const arr=[...document.querySelectorAll('.video-box')].map(b=>({
+    id: b.querySelector('iframe').src.match(/embed\/([\w-]{11})/)[1],
+    x:+b.style.left,y:+b.style.top,w:b.offsetWidth,h:b.offsetHeight,
+    vol:b.querySelector('.volume-slider').value
+  }));
+  localStorage.setItem('vd',JSON.stringify({layout:currentLayout,v:arr}));
+}
 
-    function interactBox(el){
-      interact(el).draggable({ listeners:{
-        move(e){ const t=e.target;
-          let x=(parseFloat(t.style.left)||0)+e.dx;
-          let y=(parseFloat(t.style.top)||0)+e.dy;
-          t.style.left=x+'px';t.style.top=y+'px';
-          t.setAttribute('data-x',x);t.setAttribute('data-y',y);
-        }
-      }, ignoreFrom:'input'})
-      .resizable({
-        edges:{left:true,right:true,bottom:true,top:false}, modifiers:[
-          interact.modifiers.restrictSize({min:{width:160,height:100},max:{width:1280,height:800}})
-        ], listeners:{
-          move(e){ const t=e.target, ifr=t.querySelector('iframe');
-            if(ifr) ifr.style.pointerEvents='none';
-            const edges=e.edges;
-            if(!( (edges.bottom&&edges.right)||(edges.bottom&&edges.left) )) return;
-            let x=(parseFloat(t.style.left)||0)+e.deltaRect.left;
-            let y=(parseFloat(t.style.top)||0)+e.deltaRect.top;
-            t.style.width=`${e.rect.width}px`; t.style.height=`${e.rect.height}px`;
-            t.style.left=`${x}px`; t.style.top=`${y}px`;
-            t.setAttribute('data-x',x); t.setAttribute('data-y',y);
-          },
-          end(e){ const ifr=e.target.querySelector('iframe'); if(ifr) ifr.style.pointerEvents='auto'; }
-        }
-      });
-    }
+function loadState(){
+  const s=localStorage.getItem('vd');
+  if(!s)return;
+  const {layout,v}=JSON.parse(s);
+  currentLayout=layout;
+  v.forEach(o=>addVideo(o.id,o.x,o.y,o.w,o.h,o.vol));
+}
 
-    function saveState(){
-      const state=Array.from(document.querySelectorAll('.video-box'))
-        .map(b=>{const i=b.querySelector('iframe'); const m=i.src.match(/embed\/([\w-]{11})/);
-          return m?{v:m[1],x:+b.style.left, y:+b.style.top, w:b.offsetWidth, h:b.offsetHeight,
-            vol:b.querySelector('.volume-slider').value}:null;
-        }).filter(Boolean);
-      localStorage.setItem('videoData',JSON.stringify({layout:currentLayout, videos:state}));
-    }
+function setLayout(l){currentLayout=l; applyLayout(); saveState();}
+function applyLayout(){
+  const boxes=[...document.querySelectorAll('.video-box')];
+  if(currentLayout==='single'){
+    let top=10, w=window.innerWidth-20, h=(w/16)*9+40;
+    boxes.forEach(b=>{b.style.width=w+'px';b.style.height=h+'px';b.style.left='10px';b.style.top=top+'px';top+=h+20;});
+  } else {
+    const cols=+currentLayout.slice(-1), sw=window.innerWidth;
+    const w=sw/cols-40, h=(w/16)*9+40;
+    boxes.forEach((b,i)=>{const c=i%cols,r=(i/cols|0);b.style.width=w+'px';b.style.height=h+'px';
+      b.style.left=c*(w+20)+10+'px';b.style.top=r*(h+20)+10+'px';});
+  }
+}
 
-    function loadState(){
-      const s=localStorage.getItem('videoData');
-      if(!s) return;
-      const {layout,videos}=JSON.parse(s);
-      currentLayout=layout;
-      videos.forEach(v=>addVideo(v.v,v.x,v.y,v.w,v.h,v.vol));
-    }
-
-    function setLayout(type){
-      currentLayout=type; applyLayout(); saveState();
-    }
-
-    function applyLayout(){
-      if(currentLayout==='single'){
-        let top=10, w=window.innerWidth-20, h=(w/16)*9+40;
-        document.querySelectorAll('.video-box').forEach(b=>{
-          b.style.width=`${w}px`; b.style.height=`${h}px`;
-          b.style.left=`10px`; b.style.top=`${top}px`;
-          top+=h+20;
-        });
-      }else if(currentLayout.startsWith('grid')){
-        const cols=+currentLayout.slice(-1);
-        const sw=window.innerWidth;
-        const w=sw/cols-40; const h=(w/16)*9+40;
-        document.querySelectorAll('.video-box').forEach((b,i)=>{
-          const c=i%cols, r=Math.floor(i/cols);
-          const x=c*(w+20)+10, y=r*(h+20)+10;
-          b.style.width=`${w}px`;b.style.height=`${h}px`;
-          b.style.left=`${x}px`;b.style.top=`${y}px`;
-        });
-      }
-    }
-
-    window.onload=()=>{ loadState(); applyLayout(); }
-  </script>
-</body>
-</html>
+window.onload=()=>{loadState();applyLayout();}
+</script></body></html>
