@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>軽量版 YouTube プレイヤー（URL追加＋レイアウト切替付き）</title>
+  <title>軽量版 YouTube プレイヤー（音量記憶付き）</title>
   <style>
     body {
       margin: 0;
@@ -34,10 +34,7 @@
       font-size: 12px;
       padding: 3px;
     }
-    #sheetVideoList {
-      width: 200px;
-    }
-    #videoUrl {
+    #sheetVideoList, #videoUrl {
       width: 200px;
     }
     #container {
@@ -52,12 +49,18 @@
       border: 1px solid #444;
       padding-top: 56.25%;
       cursor: pointer;
+      overflow: visible;
     }
     .video-thumb img,
     .video-thumb iframe {
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
+    }
+    .volume-slider {
+      position: relative;
+      margin-top: 4px;
+      width: 100%;
     }
     .remove-btn {
       position: absolute; top: 2px; right: 2px;
@@ -103,6 +106,7 @@
 
   <div id="container"></div>
 
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
     const MAX_VIDEOS = 9;
@@ -146,7 +150,7 @@
         .forEach(v => {
           const o = document.createElement("option");
           o.value = v.url;
-          o.textContent = `${v.title}`;
+          o.textContent = `${v.title} (${v.main}/${v.sub})`;
           list.appendChild(o);
         });
     }
@@ -207,40 +211,39 @@
       box.append(img, close, up, down);
 
       box.onclick = () => {
-  if (box.querySelector("iframe")) return;
+        if (box.querySelector("iframe")) return;
 
-  const iframe = document.createElement("iframe");
-  iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
-  iframe.frameBorder = 0;
-  iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
-  iframe.allowFullscreen = true;
-  iframe.id = `player-${id}`;
+        const iframe = document.createElement("iframe");
+        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
+        iframe.frameBorder = 0;
+        iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
+        iframe.allowFullscreen = true;
 
-  // 音量スライダー
-  const volumeSlider = document.createElement("input");
-  volumeSlider.type = "range";
-  volumeSlider.min = 0;
-  volumeSlider.max = 100;
-  volumeSlider.value = 100;
-  volumeSlider.style.width = "100%";
-  volumeSlider.style.marginTop = "4px";
+        const volumeSlider = document.createElement("input");
+        volumeSlider.type = "range";
+        volumeSlider.min = 0;
+        volumeSlider.max = 100;
+        volumeSlider.value = getSavedVolume(id);
+        volumeSlider.className = "volume-slider";
 
-  box.innerHTML = "";
-  box.append(close, up, down, iframe, volumeSlider);
+        box.innerHTML = "";
+        box.append(close, up, down, iframe, volumeSlider);
 
-  const ytPlayer = new YT.Player(iframe, {
-    events: {
-      onReady: event => {
-        event.target.setPlaybackRate(2);
-        event.target.setVolume(volumeSlider.value);
-        volumeSlider.oninput = () => event.target.setVolume(volumeSlider.value);
-      }
-    }
-  });
+        const ytPlayer = new YT.Player(iframe, {
+          events: {
+            onReady: event => {
+              event.target.setPlaybackRate(2);
+              event.target.setVolume(volumeSlider.value);
+              volumeSlider.oninput = () => {
+                event.target.setVolume(volumeSlider.value);
+                saveVolume(id, volumeSlider.value);
+              };
+            }
+          }
+        });
 
-  saveState();
-};
-
+        saveState();
+      };
 
       c.appendChild(box);
     }
@@ -261,13 +264,24 @@
 
     function saveState() {
       const ids = Array.from(document.querySelectorAll(".video-thumb"))
-                       .map(b => b.dataset.videoId);
+        .map(b => b.dataset.videoId);
       localStorage.setItem("videoThumbs", JSON.stringify(ids));
     }
 
     function loadState() {
       JSON.parse(localStorage.getItem("videoThumbs") || "[]")
         .forEach(id => createThumbnail(id));
+    }
+
+    function saveVolume(videoId, volume) {
+      const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      volumes[videoId] = volume;
+      localStorage.setItem("videoVolumes", JSON.stringify(volumes));
+    }
+
+    function getSavedVolume(videoId) {
+      const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
+      return volumes[videoId] !== undefined ? volumes[videoId] : 100;
     }
 
     window.onload = () => {
