@@ -16,8 +16,19 @@
       font-size: 12px;
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      justify-content: space-between;
       align-items: center;
+      gap: 10px;
+    }
+    .control-left,
+    .control-right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 6px;
+    }
+    .layout-buttons button {
+      margin-left: 12px;
     }
     select, input, button {
       font-size: 12px;
@@ -31,7 +42,7 @@
     }
     #container {
       display: grid;
-      grid-template-columns: repeat(2, 1fr); /* デフォルト3列 */
+      grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 10px;
     }
@@ -39,7 +50,7 @@
       position: relative;
       background: #222;
       border: 1px solid #444;
-      padding-top: 56.25%; /* 16:9 */
+      padding-top: 56.25%;
       cursor: pointer;
     }
     .video-thumb img,
@@ -65,26 +76,29 @@
 </head>
 <body>
   <div id="controls">
-    <select id="mainCategory" onchange="filterVideos()">
-      <option value="">大分類</option>
-    </select>
-    <select id="subCategory" onchange="filterVideos()">
-      <option value="">小分類</option>
-    </select>
-    <button onclick="clearFilters()">全解除</button>
+    <div class="control-left">
+      <select id="mainCategory" onchange="filterVideos()">
+        <option value="">大分類</option>
+      </select>
+      <select id="subCategory" onchange="filterVideos()">
+        <option value="">小分類</option>
+      </select>
+      <button onclick="clearFilters()">全解除</button>
 
-    <!-- ドロップダウンから追加 -->
-    <select id="sheetVideoList"></select>
-    <button onclick="addSelectedVideos()">動画を追加</button>
+      <select id="sheetVideoList"></select>
+      <button onclick="addSelectedVideos()">動画を追加</button>
 
-    <!-- URL入力から追加 -->
-    <input id="videoUrl" placeholder="YouTubeのURL">
-    <button onclick="addVideoByUrl()">URL追加</button>
+      <div class="layout-buttons">
+        <button onclick="applyLayout(1)">1×1</button>
+        <button onclick="applyLayout(2)">2×2</button>
+        <button onclick="applyLayout(3)">3×3</button>
+      </div>
+    </div>
 
-    <!-- レイアウト切替 -->
-    <button onclick="applyLayout(1)">1×1</button>
-    <button onclick="applyLayout(2)">2×2</button>
-    <button onclick="applyLayout(3)">3×3</button>
+    <div class="control-right">
+      <input id="videoUrl" placeholder="YouTubeのURL">
+      <button onclick="addVideoByUrl()">URL追加</button>
+    </div>
   </div>
 
   <div id="container"></div>
@@ -104,27 +118,27 @@
       const text = await res.text();
       const lines = text.trim().split("\n").slice(1);
       videoData = lines.map(line => {
-        const [title, main, sub, url] = line.split(",").map(v=>v.replace(/"/g,"").trim());
+        const [title, main, sub, url] = line.split(",").map(v => v.replace(/"/g, "").trim());
         return { title, main, sub, url };
-      }).filter(v=>v.url);
+      }).filter(v => v.url);
       populateFilters();
       filterVideos();
     }
 
     function populateFilters() {
       const mainSel = document.getElementById("mainCategory");
-      const subSel  = document.getElementById("subCategory");
-      const mains = [...new Set(videoData.map(v=>v.main))].sort();
-      const subs  = [...new Set(videoData.map(v=>v.sub))].sort();
+      const subSel = document.getElementById("subCategory");
+      const mains = [...new Set(videoData.map(v => v.main))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub))].sort();
       mainSel.innerHTML = '<option value="">大分類</option>';
-      subSel.innerHTML  = '<option value="">小分類</option>';
-      mains.forEach(v=> mainSel.innerHTML += `<option>${v}</option>`);
-      subs.forEach(v=> subSel.innerHTML  += `<option>${v}</option>`);
+      subSel.innerHTML = '<option value="">小分類</option>';
+      mains.forEach(v => mainSel.innerHTML += `<option>${v}</option>`);
+      subs.forEach(v => subSel.innerHTML += `<option>${v}</option>`);
     }
 
     function filterVideos() {
       const main = document.getElementById("mainCategory").value;
-      const sub  = document.getElementById("subCategory").value;
+      const sub = document.getElementById("subCategory").value;
       const list = document.getElementById("sheetVideoList");
       list.innerHTML = "";
       videoData
@@ -139,7 +153,7 @@
 
     function clearFilters() {
       document.getElementById("mainCategory").value = "";
-      document.getElementById("subCategory").value  = "";
+      document.getElementById("subCategory").value = "";
       filterVideos();
     }
 
@@ -150,8 +164,8 @@
 
     function addVideoByUrl(inputUrl = null) {
       const url = inputUrl || document.getElementById("videoUrl").value;
-      const id  = extractVideoID(url);
-      const c   = document.getElementById("container");
+      const id = extractVideoID(url);
+      const c = document.getElementById("container");
       if (!id) {
         alert("有効なYouTubeリンクを入力してください");
         return;
@@ -171,18 +185,15 @@
       box.className = "video-thumb";
       box.dataset.videoId = id;
 
-      // サムネイル
       const img = document.createElement("img");
       img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
       img.loading = "lazy";
 
-      // 削除ボタン
       const close = document.createElement("button");
       close.className = "remove-btn";
       close.textContent = "×";
       close.onclick = e => { e.stopPropagation(); box.remove(); saveState(); };
 
-      // 並び替えボタン
       const up = document.createElement("button");
       up.className = "move-btn move-up";
       up.textContent = "↑";
@@ -195,7 +206,6 @@
 
       box.append(img, close, up, down);
 
-      // サムネクリックで再生
       box.onclick = () => {
         if (box.querySelector("iframe")) return;
         const iframe = document.createElement("iframe");
@@ -217,7 +227,7 @@
       const i = arr.indexOf(box), j = i + dir;
       if (j < 0 || j >= arr.length) return;
       if (dir > 0) c.insertBefore(arr[j], box);
-      else         c.insertBefore(box, arr[j]);
+      else c.insertBefore(box, arr[j]);
       saveState();
     }
 
@@ -239,7 +249,7 @@
     window.onload = () => {
       loadSpreadsheet();
       loadState();
-      applyLayout(2); // デフォルト3×3
+      applyLayout(2);
     };
   </script>
 </body>
