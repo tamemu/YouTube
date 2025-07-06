@@ -2,75 +2,36 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>軽量版 YouTube プレイヤー（ドロップダウン＋並び替え付き）</title>
+  <title>軽量版 YouTube プレイヤー（無停止最低画質対応）</title>
   <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
-    }
+    body { margin:0; background:#000; color:#fff; font-family:sans-serif; }
     #controls {
-      padding: 6px 10px;
-      background: #111;
-      font-size: 12px;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      align-items: center;
+      padding:6px 10px; background:#111; font-size:12px;
+      display:flex; flex-wrap:wrap; gap:6px; align-items:center;
     }
-    select, input, button {
-      font-size: 12px;
-      padding: 3px;
-    }
-    #sheetVideoList {
-      width: 280px;
-    }
+    select, button { font-size:12px; padding:3px; }
+    #sheetVideoList { width:280px; }
     #container {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      grid-auto-rows: auto;
-      gap: 10px;
-      padding: 10px;
+      display:grid; grid-template-columns:repeat(3,1fr);
+      gap:10px; padding:10px;
     }
     .video-thumb {
-      position: relative;
-      background: #222;
-      border: 1px solid #444;
-      padding-top: 56.25%; /* 16:9 */
-      cursor: pointer;
+      position:relative; background:#222; border:1px solid #444;
+      padding-top:56.25%; /*16:9*/ cursor:pointer;
     }
-    .video-thumb iframe, .video-thumb img {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+    .video-thumb img, .video-thumb iframe, .video-thumb div.player {
+      position:absolute; top:0; left:0; width:100%; height:100%;
     }
     .remove-btn {
-      position: absolute;
-      top: 2px;
-      right: 2px;
-      background: red;
-      color: white;
-      font-size: 12px;
-      border: none;
-      padding: 2px 5px;
-      cursor: pointer;
-      z-index: 10;
+      position:absolute; top:2px; right:2px; background:red; color:#fff;
+      border:none; font-size:12px; padding:2px 5px; cursor:pointer; z-index:10;
     }
     .move-btn {
-      position: absolute;
-      left: 2px;
-      width: 24px;
-      font-size: 12px;
-      z-index: 10;
-      background: #444;
-      color: #fff;
-      border: none;
-      cursor: pointer;
-      padding: 2px;
+      position:absolute; left:2px; width:24px; font-size:12px;
+      background:#444; color:#fff; border:none; padding:2px; cursor:pointer; z-index:10;
     }
-    .move-up { top: 2px; }
-    .move-down { top: 24px; }
+    .move-up { top:2px; }
+    .move-down { top:24px; }
   </style>
 </head>
 <body>
@@ -82,21 +43,22 @@
       <option value="">小分類</option>
     </select>
     <button onclick="clearFilters()">全解除</button>
-
-    <!-- 通常のドロップダウン -->
     <select id="sheetVideoList"></select>
     <button onclick="addSelectedVideos()">動画を追加</button>
+    <button onclick="setAllLowQuality()">最低画質で再生</button>
   </div>
 
   <div id="container"></div>
 
+  <!-- YouTube IFrame API -->
+  <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
     const MAX_VIDEOS = 9;
-    let videoData = [];
+    let videoData = [], playerMap = {};
 
     function extractVideoID(url) {
-      const m = url.match(/(?:v=|\/)([a-zA-Z0-9_-]{11})(?:[&?]|$)/);
+      const m = url.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[&?]|$)/);
       return m ? m[1] : null;
     }
 
@@ -104,8 +66,8 @@
       const res = await fetch(sheetUrl);
       const text = await res.text();
       const lines = text.trim().split("\n").slice(1);
-      videoData = lines.map(line => {
-        const [title, main, sub, url] = line.split(",").map(v=>v.replace(/"/g,"").trim());
+      videoData = lines.map(line=>{
+        const [title,main,sub,url] = line.split(",").map(v=>v.replace(/"/g,"").trim());
         return { title, main, sub, url };
       }).filter(v=>v.url);
       populateFilters();
@@ -113,118 +75,108 @@
     }
 
     function populateFilters() {
-      const mainSel = document.getElementById("mainCategory");
-      const subSel  = document.getElementById("subCategory");
       const mains = [...new Set(videoData.map(v=>v.main))].sort();
       const subs  = [...new Set(videoData.map(v=>v.sub))].sort();
-      mainSel.innerHTML = '<option value="">大分類</option>';
-      subSel.innerHTML  = '<option value="">小分類</option>';
-      mains.forEach(v=> mainSel.innerHTML += `<option value="${v}">${v}</option>`);
-      subs.forEach(v=> subSel.innerHTML  += `<option value="${v}">${v}</option>`);
+      const m=document.getElementById("mainCategory"), s=document.getElementById("subCategory");
+      m.innerHTML='<option value="">大分類</option>'; mains.forEach(v=>m.innerHTML+=`<option>${v}</option>`);
+      s.innerHTML='<option value="">小分類</option>';  subs.forEach(v=>s.innerHTML+=`<option>${v}</option>`);
     }
 
     function filterVideos() {
-      const main = document.getElementById("mainCategory").value;
-      const sub  = document.getElementById("subCategory").value;
-      const list = document.getElementById("sheetVideoList");
-      list.innerHTML = "";
-      videoData
-        .filter(v=> (!main||v.main===main) && (!sub||v.sub===sub))
+      const main=document.getElementById("mainCategory").value;
+      const sub =document.getElementById("subCategory").value;
+      const list=document.getElementById("sheetVideoList");
+      list.innerHTML="";
+      videoData.filter(v=>(!main||v.main===main)&&(!sub||v.sub===sub))
         .forEach(v=> {
-          const o = document.createElement("option");
-          o.value = v.url;
-          o.textContent = `${v.title} (${v.main}/${v.sub})`;
+          const o=document.createElement("option");
+          o.value=v.url; o.textContent=`${v.title} (${v.main}/${v.sub})`;
           list.appendChild(o);
         });
     }
 
-    function clearFilters() {
-      document.getElementById("mainCategory").value = "";
-      document.getElementById("subCategory").value  = "";
+    function clearFilters(){
+      document.getElementById("mainCategory").value="";
+      document.getElementById("subCategory").value="";
       filterVideos();
     }
 
-    function addSelectedVideos() {
-      const list = document.getElementById("sheetVideoList");
-      const url  = list.value;
-      const id   = extractVideoID(url);
-      const c    = document.getElementById("container");
-      if (!id) return;
-      if (c.children.length >= MAX_VIDEOS) {
-        return alert("最大9件まで追加できます");
+    function addSelectedVideos(){
+      const url = document.getElementById("sheetVideoList").value;
+      const id  = extractVideoID(url);
+      const c   = document.getElementById("container");
+      if(!id) return;
+      if(c.children.length>=MAX_VIDEOS){
+        alert("最大9件まで追加できます"); return;
       }
       createThumbnail(id);
       saveState();
     }
 
-    function createThumbnail(id) {
-      const c = document.getElementById("container");
-      const box = document.createElement("div");
-      box.className = "video-thumb";
-      box.dataset.videoId = id;
+    function createThumbnail(id){
+      const c=document.getElementById("container");
+      const box=document.createElement("div"); box.className="video-thumb"; box.dataset.videoId=id;
+      // サムネ
+      const img=document.createElement("img"); img.src=`https://img.youtube.com/vi/${id}/hqdefault.jpg`; img.loading="lazy";
+      // ボタン類
+      const close=document.createElement("button"); close.className="remove-btn"; close.textContent="×";
+      close.onclick=e=>{ e.stopPropagation(); deletePlayer(box); box.remove(); saveState(); };
+      const up=document.createElement("button");    up.className="move-btn move-up"; up.textContent="↑";
+      up.onclick=e=>{ e.stopPropagation(); moveBox(box,-1); };
+      const down=document.createElement("button");  down.className="move-btn move-down"; down.textContent="↓";
+      down.onclick=e=>{ e.stopPropagation(); moveBox(box,1); };
 
-      const img = document.createElement("img");
-      img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-      img.loading = "lazy";
-      box.appendChild(img);
-
-      const close = document.createElement("button");
-      close.className = "remove-btn";
-      close.textContent = "×";
-      close.onclick = e=>{ e.stopPropagation(); box.remove(); saveState(); };
-
-      const up = document.createElement("button");
-      up.className = "move-btn move-up";
-      up.textContent = "↑";
-      up.onclick = e=>{ e.stopPropagation(); moveBox(box,-1); };
-
-      const down = document.createElement("button");
-      down.className = "move-btn move-down";
-      down.textContent = "↓";
-      down.onclick = e=>{ e.stopPropagation(); moveBox(box,1); };
-
-      box.append(close, up, down);
-
-      box.onclick = () => {
-        if (box.querySelector("iframe")) return;
-        const iframe = document.createElement("iframe");
-        iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0`;
-        iframe.frameBorder = 0;
-        iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
-        iframe.allowFullscreen = true;
-        box.innerHTML = "";
-        box.append(close, up, down, iframe);
-        saveState();
+      box.append(img, close, up, down);
+      // クリックで API プレーヤー化
+      box.onclick=()=>{
+        if(box.querySelector("div.player")) return;
+        box.innerHTML=""; box.append(close, up, down);
+        const pd=document.createElement("div"); pd.className="player"; 
+        const pid="player_"+id+"_"+Date.now(); pd.id=pid;
+        box.appendChild(pd);
+        playerMap[pid] = new YT.Player(pid, {
+          videoId: id,
+          playerVars: { autoplay:1, rel:0, modestbranding:1, enablejsapi:1 },
+          events: { onReady: e => {/* 再生自動 */} }
+        });
       };
-
       c.appendChild(box);
     }
 
-    function moveBox(box, dir) {
-      const c = document.getElementById("container");
-      const arr = Array.from(c.children);
-      const i = arr.indexOf(box), j = i + dir;
-      if (j<0||j>=arr.length) return;
-      if (dir>0) c.insertBefore(arr[j], box);
-      else       c.insertBefore(box, arr[j]);
+    function deletePlayer(box){
+      const pd=box.querySelector("div.player");
+      if(pd){
+        const pid=pd.id;
+        if(playerMap[pid] && playerMap[pid].destroy) playerMap[pid].destroy();
+        delete playerMap[pid];
+      }
+    }
+
+    function moveBox(box, dir){
+      const c=document.getElementById("container"), arr=Array.from(c.children);
+      const i=arr.indexOf(box), j=i+dir; if(j<0||j>=arr.length) return;
+      dir>0 ? c.insertBefore(arr[j],box) : c.insertBefore(box,arr[j]);
       saveState();
     }
 
-    function saveState() {
+    function setAllLowQuality(){
+      Object.values(playerMap).forEach(p=>{
+        if(p && p.setPlaybackQuality) p.setPlaybackQuality('small');
+      });
+    }
+
+    function saveState(){
       const ids = Array.from(document.querySelectorAll(".video-thumb"))
-                       .map(b=>b.dataset.videoId);
+                      .map(b=>b.dataset.videoId);
       localStorage.setItem("videoThumbs", JSON.stringify(ids));
     }
 
-    function loadState() {
+    function loadState(){
       JSON.parse(localStorage.getItem("videoThumbs")||"[]")
         .forEach(id=> createThumbnail(id));
     }
 
-    window.onload = () => {
-      loadSpreadsheet();
-      loadState();
-    };
+    window.onload = ()=>{ loadSpreadsheet(); loadState(); };
   </script>
 </body>
 </html>
