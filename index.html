@@ -74,9 +74,9 @@
     let currentLayout = '1x1';
 
     function extractVideoID(url) {
-      const match = url.match(/(?:v=|\/embed\/|\.be\/|\/shorts\/|\/live\/)([a-zA-Z0-9_-]{11})/);
-      return match ? match[1] : null;
-    }
+  const match = url.match(/(?:\/|v=|embed\/|shorts\/|live\/|\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
 
     function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, volume = 100) {
       if (!videoId) {
