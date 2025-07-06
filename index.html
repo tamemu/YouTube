@@ -26,6 +26,7 @@
       background: #222;
       color: #fff;
       border: 1px solid #444;
+      transition: all 0.2s ease;
     }
     #container {
       position: relative;
@@ -70,8 +71,16 @@
           <select id="subCategory" onchange="filterVideos()"><option value="">-- 小分類 --</option></select>
           <button onclick="clearFilters()">全解除</button>
         </div>
-        <select id="sheetVideoList" multiple size="12"></select>
-        <button onclick="addSelectedVideos()">選択した動画を追加</button>
+
+        <!-- リストとボタンを横並びに -->
+        <div style="display: flex; gap: 10px;">
+          <select id="sheetVideoList" multiple size="12"
+                  onclick="expandListOnClick()"
+                  onblur="shrinkListOnBlur()"></select>
+          <div style="display: flex; flex-direction: column; justify-content: flex-start;">
+            <button onclick="addSelectedVideos()">動画を追加</button>
+          </div>
+        </div>
       </div>
 
       <!-- 右：URLと操作 -->
@@ -108,7 +117,7 @@
       try {
         const res = await fetch(sheetUrl);
         const text = await res.text();
-        const lines = text.trim().split("\n").slice(1); // skip header
+        const lines = text.trim().split("\n").slice(1);
         videoData = lines.map(line => {
           const parts = line.split(",");
           if (parts.length < 4) return null;
@@ -165,6 +174,14 @@
         const id = extractVideoID(opt.value);
         if (id) addVideo(id);
       });
+    }
+
+    function expandListOnClick() {
+      document.getElementById("sheetVideoList").size = 20;
+    }
+
+    function shrinkListOnBlur() {
+      document.getElementById("sheetVideoList").size = 12;
     }
 
     function addVideo(videoId = null, x = 50, y = 50, width = 480, height = 270, volume = 100) {
