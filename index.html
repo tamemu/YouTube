@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>軽量版 YouTube プレイヤー（音量記憶・スライダー位置改善）</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
   <style>
     /* --- ページ全体の基本スタイル --- */
     body {
@@ -80,9 +81,46 @@
       width: 80px;
       z-index: 10;
     }
+    /* --- レスポンシブ対応: 画面幅に応じてUIサイズを調整 --- */
+    @media (max-width: 600px) {
+      #settingsBtn {
+        font-size: 28px !important;
+        padding: 12px 18px !important;
+      }
+      #settingsModal > div {
+        min-width: 90vw !important;
+        padding: 10px 2vw 10px 2vw !important;
+      }
+      .control-left, .control-right, .layout-buttons, select, input, button {
+        font-size: 18px !important;
+      }
+      #controls input, #controls select, #controls button {
+        font-size: 18px !important;
+        padding: 8px !important;
+      }
+      #videoUrl, #sheetVideoList {
+        width: 90vw !important;
+        min-width: 0 !important;
+      }
+    }
+    /* --- 設定ボタンのフェードアウト --- */
+    #settingsBtn.hide {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.4s;
+    }
+    #settingsBtn {
+      transition: opacity 0.4s;
+    }
   </style>
 </head>
 <body>
+  <!-- 設定項目: ボタン・スライダー表示切替用チェックボックス -->
+  <div id="settingsToggles" style="display:none;position:fixed;top:60px;right:10px;z-index:1001;background:#222;padding:10px 16px;border-radius:8px;color:#fff;font-size:16px;box-shadow:0 2px 8px #0008;">
+    <label><input type="checkbox" id="toggleUpDown" checked> 上下ボタン表示</label><br>
+    <label><input type="checkbox" id="toggleVolume" checked> 音量スライダー表示</label><br>
+    <label><input type="checkbox" id="toggleRemove" checked> 削除ボタン表示</label>
+  </div>
   <!-- 設定ボタン（右上固定） -->
   <button id="settingsBtn" style="position:fixed;top:10px;right:10px;z-index:1000;font-size:20px;padding:8px 14px;">⚙️</button>
 
@@ -243,9 +281,11 @@
         });
 
         saveState();
+        updateThumbControlsVisibility(); // サムネイル内のボタン表示状態を反映
       };
 
       c.appendChild(box);
+      updateThumbControlsVisibility(); // サムネイル内のボタン表示状態を反映
     }
 
     // --- サムネイルの順序を入れ替え ---
@@ -292,17 +332,66 @@
       return volumes[videoId] !== undefined ? volumes[videoId] : 100;
     }
 
-    // --- 設定モーダルの開閉制御 ---
+    // --- 設定ボタンのスクロールによる自動非表示 ---
+    let lastScrollY = window.scrollY;
+    window.addEventListener('scroll', () => {
+      const btn = document.getElementById('settingsBtn');
+      if (!btn) return;
+      if (window.scrollY > lastScrollY + 10) {
+        btn.classList.add('hide');
+      } else if (window.scrollY < lastScrollY - 10 || window.scrollY === 0) {
+        btn.classList.remove('hide');
+      }
+      lastScrollY = window.scrollY;
+    });
+
+    // --- 設定項目のトグル表示 ---
     document.addEventListener("DOMContentLoaded", () => {
       const settingsBtn = document.getElementById("settingsBtn");
       const settingsModal = document.getElementById("settingsModal");
       const closeSettings = document.getElementById("closeSettings");
+      const settingsToggles = document.getElementById("settingsToggles");
       // モーダル開く
-      settingsBtn.onclick = () => { settingsModal.style.display = "flex"; };
+      settingsBtn.onclick = () => {
+        settingsModal.style.display = "flex";
+        settingsToggles.style.display = "block";
+      };
       // モーダル閉じる
-      closeSettings.onclick = () => { settingsModal.style.display = "none"; };
+      closeSettings.onclick = () => {
+        settingsModal.style.display = "none";
+        settingsToggles.style.display = "none";
+      };
       // モーダル外クリックで閉じる
-      settingsModal.onclick = e => { if (e.target === settingsModal) settingsModal.style.display = "none"; };
+      settingsModal.onclick = e => {
+        if (e.target === settingsModal) {
+          settingsModal.style.display = "none";
+          settingsToggles.style.display = "none";
+        }
+      };
+    });
+
+    // --- 各ボタン・スライダーの表示/非表示切替 ---
+    function updateThumbControlsVisibility() {
+      const showUpDown = document.getElementById('toggleUpDown').checked;
+      const showVolume = document.getElementById('toggleVolume').checked;
+      const showRemove = document.getElementById('toggleRemove').checked;
+      document.querySelectorAll('.move-btn').forEach(btn => btn.style.display = showUpDown ? '' : 'none');
+      document.querySelectorAll('.volume-slider').forEach(slider => slider.style.display = showVolume ? '' : 'none');
+      document.querySelectorAll('.remove-btn').forEach(btn => btn.style.display = showRemove ? '' : 'none');
+      // 設定をlocalStorageに保存
+      localStorage.setItem('showUpDown', showUpDown ? '1' : '0');
+      localStorage.setItem('showVolume', showVolume ? '1' : '0');
+      localStorage.setItem('showRemove', showRemove ? '1' : '0');
+    }
+    // チェックボックス変更時に反映
+    document.addEventListener('DOMContentLoaded', () => {
+      ['toggleUpDown','toggleVolume','toggleRemove'].forEach(id => {
+        document.getElementById(id).onchange = updateThumbControlsVisibility;
+      });
+      // localStorageから初期値復元
+      if(localStorage.getItem('showUpDown')==='0') document.getElementById('toggleUpDown').checked = false;
+      if(localStorage.getItem('showVolume')==='0') document.getElementById('toggleVolume').checked = false;
+      if(localStorage.getItem('showRemove')==='0') document.getElementById('toggleRemove').checked = false;
     });
 
     // --- コントロールバーのHTMLを動的に生成してモーダル内に挿入 ---
@@ -342,6 +431,7 @@
       // レイアウト列数をlocalStorageから復元
       const savedCols = localStorage.getItem("gridCols");
       applyLayout(savedCols ? Number(savedCols) : 2);
+      updateThumbControlsVisibility(); // サムネイル内のボタン表示状態を反映
     };
   </script>
 </body>
