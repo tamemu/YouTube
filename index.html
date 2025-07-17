@@ -235,28 +235,91 @@
         border-width: 0 4px 4px 0;
       }
     }
+    .settings-panel {
+      box-sizing: border-box;
+      max-width: 98vw;
+      overflow: hidden;
+    }
+    .settings-checkbox-group {
+      width: 100%;
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      box-sizing: border-box;
+      align-items: flex-start;
+    }
+    #closeSettings {
+      position: absolute;
+      top: 12px;
+      right: 16px;
+      font-size: 22px;
+      background: none;
+      border: none;
+      color: #fff;
+      z-index: 2;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0 4px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    #closeSettings:hover, #closeSettings:focus {
+      background: #3fa7ff33;
+    }
+    @media (max-width: 600px) {
+      .settings-panel {
+        width: 96vw;
+        min-width: 0;
+        max-width: 100vw;
+        padding: 12px 2vw 8px 2vw !important;
+      }
+      .settings-checkbox-group {
+        gap: 14px;
+      }
+      #closeSettings {
+        top: 8px;
+        right: 8px;
+        font-size: 30px;
+        padding: 0 8px;
+      }
+    }
+    .settings-checkbox-indent {
+      margin-left: 18px;
+    }
+    @media (max-width: 600px) {
+      .settings-checkbox-indent {
+        margin-left: 10vw;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- 設定項目: ボタン・スライダー表示切替用チェックボックス -->
   <div id="settingsToggles" style="display:none;position:fixed;top:60px;right:10px;z-index:1001;">
-    <div class="settings-panel">
-      <div class="settings-title">表示オプション</div>
-      <label class="settings-checkbox">
-        <input type="checkbox" id="toggleUpDown" checked>
-        <span class="checkmark"></span>
-        上下ボタン表示
-      </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" id="toggleVolume" checked>
-        <span class="checkmark"></span>
-        音量スライダー表示
-      </label>
-      <label class="settings-checkbox">
-        <input type="checkbox" id="toggleRemove" checked>
-        <span class="checkmark"></span>
-        削除ボタン表示
-      </label>
+    <div class="settings-panel" style="position:relative;overflow:hidden;box-sizing:border-box;">
+      <button id="closeSettings" style="position:absolute;top:12px;right:16px;font-size:22px;background:none;border:none;color:#fff;z-index:2;cursor:pointer;line-height:1;">×</button>
+      <div class="settings-title" style="padding-right:32px;">表示オプション</div>
+      <div id="settingsControlsWrapper">
+        <!-- コントロールバーがここに動的に挿入されます -->
+      </div>
+      <div class="settings-checkbox-group settings-checkbox-indent">
+        <label class="settings-checkbox">
+          <input type="checkbox" id="toggleUpDown" checked>
+          <span class="checkmark"></span>
+          上下ボタン表示
+        </label>
+        <label class="settings-checkbox">
+          <input type="checkbox" id="toggleVolume" checked>
+          <span class="checkmark"></span>
+          音量スライダー表示
+        </label>
+        <label class="settings-checkbox">
+          <input type="checkbox" id="toggleRemove" checked>
+          <span class="checkmark"></span>
+          削除ボタン表示
+        </label>
+      </div>
     </div>
   </div>
   <!-- 設定ボタン（右上固定） -->
@@ -487,7 +550,6 @@
     document.addEventListener("DOMContentLoaded", () => {
       const settingsBtn = document.getElementById("settingsBtn");
       const settingsModal = document.getElementById("settingsModal");
-      const closeSettings = document.getElementById("closeSettings");
       const settingsToggles = document.getElementById("settingsToggles");
       // モーダル開く
       settingsBtn.onclick = () => {
@@ -495,7 +557,7 @@
         settingsToggles.style.display = "block";
       };
       // モーダル閉じる
-      closeSettings.onclick = () => {
+      document.getElementById("closeSettings").onclick = () => {
         settingsModal.style.display = "none";
         settingsToggles.style.display = "none";
       };
@@ -557,7 +619,10 @@
           <button onclick="addVideoByUrl()">URL追加</button>
         </div>
       `;
-      document.getElementById("controls").replaceWith(controls);
+      // コントロールバーはsettingsControlsWrapper内に挿入
+      const wrapper = document.getElementById("settingsControlsWrapper");
+      wrapper.innerHTML = '';
+      wrapper.appendChild(controls);
       controls.id = "controls";
     }
 
