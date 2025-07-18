@@ -292,6 +292,64 @@
         margin-left: 10vw;
       }
     }
+    .modal-section {
+      margin-bottom: 20px;
+      padding: 12px 0;
+      border-bottom: 1px solid #444;
+    }
+    .modal-section:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .section-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #3fa7ff;
+    }
+    .filter-controls, .video-add-controls, .layout-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .filter-controls select, .video-add-controls select, .video-add-controls input {
+      font-size: 14px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+    }
+    .filter-controls button, .video-add-controls button, .layout-controls button {
+      font-size: 14px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #3fa7ff;
+      background: #3fa7ff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .filter-controls button:hover, .video-add-controls button:hover, .layout-controls button:hover {
+      background: #2d8ce6;
+    }
+    .layout-controls {
+      flex-direction: row;
+      gap: 6px;
+    }
+    @media (max-width: 600px) {
+      .section-title {
+        font-size: 18px;
+      }
+      .filter-controls select, .video-add-controls select, .video-add-controls input {
+        font-size: 16px;
+        padding: 8px 10px;
+      }
+      .filter-controls button, .video-add-controls button, .layout-controls button {
+        font-size: 16px;
+        padding: 8px 14px;
+      }
+    }
   </style>
 </head>
 <body>
@@ -299,26 +357,63 @@
   <div id="settingsToggles" style="display:none;position:fixed;top:60px;right:10px;z-index:1001;">
     <div class="settings-panel" style="position:relative;overflow:hidden;box-sizing:border-box;">
       <button id="closeSettings" style="position:absolute;top:12px;right:16px;font-size:22px;background:none;border:none;color:#fff;z-index:2;cursor:pointer;line-height:1;">×</button>
-      <div class="settings-title" style="padding-right:32px;">表示オプション</div>
-      <div id="settingsControlsWrapper">
-        <!-- コントロールバーがここに動的に挿入されます -->
+      <div class="settings-title" style="padding-right:32px;">設定</div>
+      
+      <!-- モーダル内の独立したフィルタ機能 -->
+      <div class="modal-section">
+        <div class="section-title">動画フィルタ</div>
+        <div class="filter-controls">
+          <select id="modalMainCategory" onchange="filterVideosInModal()">
+            <option value="">大分類</option>
+          </select>
+          <select id="modalSubCategory" onchange="filterVideosInModal()">
+            <option value="">小分類</option>
+          </select>
+          <button onclick="clearFiltersInModal()">全解除</button>
+        </div>
       </div>
-      <div class="settings-checkbox-group settings-checkbox-indent">
-        <label class="settings-checkbox">
-          <input type="checkbox" id="toggleUpDown" checked>
-          <span class="checkmark"></span>
-          上下ボタン表示
-        </label>
-        <label class="settings-checkbox">
-          <input type="checkbox" id="toggleVolume" checked>
-          <span class="checkmark"></span>
-          音量スライダー表示
-        </label>
-        <label class="settings-checkbox">
-          <input type="checkbox" id="toggleRemove" checked>
-          <span class="checkmark"></span>
-          削除ボタン表示
-        </label>
+      
+      <!-- モーダル内の独立した動画追加機能 -->
+      <div class="modal-section">
+        <div class="section-title">動画追加</div>
+        <div class="video-add-controls">
+          <select id="modalVideoList"></select>
+          <button onclick="addSelectedVideosFromModal()">動画を追加</button>
+          <input id="modalVideoUrl" placeholder="YouTubeのURL">
+          <button onclick="addVideoByUrlFromModal()">URL追加</button>
+        </div>
+      </div>
+      
+      <!-- モーダル内の独立したレイアウト切替機能 -->
+      <div class="modal-section">
+        <div class="section-title">レイアウト</div>
+        <div class="layout-controls">
+          <button onclick="applyLayoutFromModal(1)">1×1</button>
+          <button onclick="applyLayoutFromModal(2)">2×2</button>
+          <button onclick="applyLayoutFromModal(3)">3×3</button>
+        </div>
+      </div>
+      
+      <!-- 表示オプション -->
+      <div class="modal-section">
+        <div class="section-title">表示オプション</div>
+        <div class="settings-checkbox-group settings-checkbox-indent">
+          <label class="settings-checkbox">
+            <input type="checkbox" id="toggleUpDown" checked>
+            <span class="checkmark"></span>
+            上下ボタン表示
+          </label>
+          <label class="settings-checkbox">
+            <input type="checkbox" id="toggleVolume" checked>
+            <span class="checkmark"></span>
+            音量スライダー表示
+          </label>
+          <label class="settings-checkbox">
+            <input type="checkbox" id="toggleRemove" checked>
+            <span class="checkmark"></span>
+            削除ボタン表示
+          </label>
+        </div>
       </div>
     </div>
   </div>
@@ -361,7 +456,9 @@
         return { title, main, sub, url };
       }).filter(v => v.url);
       populateFilters();
+      populateModalFilters(); // モーダル内フィルタも初期化
       filterVideos();
+      filterVideosInModal(); // モーダル内フィルタも初期化
     }
 
     // --- フィルタ用のセレクトボックスを生成 ---
@@ -594,41 +691,66 @@
       if(localStorage.getItem('showRemove')==='0') document.getElementById('toggleRemove').checked = false;
     });
 
-    // --- コントロールバーのHTMLを動的に生成してモーダル内に挿入 ---
-    function renderControls() {
-      const controls = document.createElement("div");
-      controls.innerHTML = `
-        <div class="control-left">
-          <select id="mainCategory" onchange="filterVideos()">
-            <option value="">大分類</option>
-          </select>
-          <select id="subCategory" onchange="filterVideos()">
-            <option value="">小分類</option>
-          </select>
-          <button onclick="clearFilters()">全解除</button>
-          <select id="sheetVideoList"></select>
-          <button onclick="addSelectedVideos()">動画を追加</button>
-          <div class="layout-buttons">
-            <button onclick="applyLayout(1)">1×1</button>
-            <button onclick="applyLayout(2)">2×2</button>
-            <button onclick="applyLayout(3)">3×3</button>
-          </div>
-        </div>
-        <div class="control-right">
-          <input id="videoUrl" placeholder="YouTubeのURL">
-          <button onclick="addVideoByUrl()">URL追加</button>
-        </div>
-      `;
-      // コントロールバーはsettingsControlsWrapper内に挿入
-      const wrapper = document.getElementById("settingsControlsWrapper");
-      wrapper.innerHTML = '';
-      wrapper.appendChild(controls);
-      controls.id = "controls";
+    // --- モーダル内の独立したフィルタ機能 ---
+    function filterVideosInModal() {
+      const main = document.getElementById("modalMainCategory").value;
+      const sub = document.getElementById("modalSubCategory").value;
+      const list = document.getElementById("modalVideoList");
+      list.innerHTML = "";
+      videoData
+        .filter(v => (!main || v.main === main) && (!sub || v.sub === sub))
+        .forEach(v => {
+          const o = document.createElement("option");
+          o.value = v.url;
+          o.textContent = `${v.title} (${v.main}/${v.sub})`;
+          list.appendChild(o);
+        });
+    }
+
+    function clearFiltersInModal() {
+      document.getElementById("modalMainCategory").value = "";
+      document.getElementById("modalSubCategory").value = "";
+      filterVideosInModal();
+    }
+
+    // --- モーダル内の独立した動画追加機能 ---
+    function addSelectedVideosFromModal() {
+      const url = document.getElementById("modalVideoList").value;
+      addVideoByUrlFromModal(url);
+    }
+
+    function addVideoByUrlFromModal(inputUrl = null) {
+      const url = inputUrl || document.getElementById("modalVideoUrl").value;
+      const id = extractVideoID(url);
+      if (!id) {
+        alert("有効なYouTubeリンクを入力してください");
+        return;
+      }
+      createThumbnail(id);
+      document.getElementById("modalVideoUrl").value = "";
+      saveState();
+    }
+
+    // --- モーダル内の独立したレイアウト切替機能 ---
+    function applyLayoutFromModal(cols) {
+      document.getElementById("container").style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      localStorage.setItem("gridCols", cols);
+    }
+
+    // --- モーダル内のフィルタ用セレクトボックスを生成 ---
+    function populateModalFilters() {
+      const mainSel = document.getElementById("modalMainCategory");
+      const subSel = document.getElementById("modalSubCategory");
+      const mains = [...new Set(videoData.map(v => v.main))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub))].sort();
+      mainSel.innerHTML = '<option value="">大分類</option>';
+      subSel.innerHTML = '<option value="">小分類</option>';
+      mains.forEach(v => mainSel.innerHTML += `<option>${v}</option>`);
+      subs.forEach(v => subSel.innerHTML += `<option>${v}</option>`);
     }
 
     // --- ページロード時の初期化 ---
     window.onload = () => {
-      renderControls(); // コントロールバーをモーダル内に描画
       loadSpreadsheet(); // 動画リスト取得
       loadState();       // サムネイル復元
       // レイアウト列数をlocalStorageから復元
