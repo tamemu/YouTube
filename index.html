@@ -394,9 +394,8 @@
         </div>
       </div>
       
-      <!-- 表示オプション -->
+      <!-- 表示設定 -->
       <div class="modal-section">
-        <div class="section-title">表示オプション</div>
         <div class="settings-checkbox-group settings-checkbox-indent">
           <label class="settings-checkbox">
             <input type="checkbox" id="toggleUpDown" checked>
@@ -448,71 +447,24 @@
 
     // --- スプレッドシートから動画リストを取得・整形 ---
     async function loadSpreadsheet() {
-      const res = await fetch(sheetUrl);
-      const text = await res.text();
-      const lines = text.trim().split("\n").slice(1);
-      videoData = lines.map(line => {
-        const [title, main, sub, url] = line.split(",").map(v => v.replace(/"/g, "").trim());
-        return { title, main, sub, url };
-      }).filter(v => v.url);
-      populateFilters();
-      populateModalFilters(); // モーダル内フィルタも初期化
-      filterVideos();
-      filterVideosInModal(); // モーダル内フィルタも初期化
-    }
-
-    // --- フィルタ用のセレクトボックスを生成 ---
-    function populateFilters() {
-      const mainSel = document.getElementById("mainCategory");
-      const subSel = document.getElementById("subCategory");
-      const mains = [...new Set(videoData.map(v => v.main))].sort();
-      const subs = [...new Set(videoData.map(v => v.sub))].sort();
-      mainSel.innerHTML = '<option value="">大分類</option>';
-      subSel.innerHTML = '<option value="">小分類</option>';
-      mains.forEach(v => mainSel.innerHTML += `<option>${v}</option>`);
-      subs.forEach(v => subSel.innerHTML += `<option>${v}</option>`);
-    }
-
-    // --- フィルタ条件で動画リストを絞り込み ---
-    function filterVideos() {
-      const main = document.getElementById("mainCategory").value;
-      const sub = document.getElementById("subCategory").value;
-      const list = document.getElementById("sheetVideoList");
-      list.innerHTML = "";
-      videoData
-        .filter(v => (!main || v.main === main) && (!sub || v.sub === sub))
-        .forEach(v => {
-          const o = document.createElement("option");
-          o.value = v.url;
-          o.textContent = `${v.title} (${v.main}/${v.sub})`;
-          list.appendChild(o);
-        });
-    }
-
-    // --- フィルタ全解除 ---
-    function clearFilters() {
-      document.getElementById("mainCategory").value = "";
-      document.getElementById("subCategory").value = "";
-      filterVideos();
-    }
-
-    // --- 選択中の動画を追加 ---
-    function addSelectedVideos() {
-      const url = document.getElementById("sheetVideoList").value;
-      addVideoByUrl(url);
-    }
-
-    // --- URLから動画を追加 ---
-    function addVideoByUrl(inputUrl = null) {
-      const url = inputUrl || document.getElementById("videoUrl").value;
-      const id = extractVideoID(url);
-      if (!id) {
-        alert("有効なYouTubeリンクを入力してください");
-        return;
+      try {
+        const res = await fetch(sheetUrl);
+        if (!res.ok) {
+          console.error('スプレッドシートの取得に失敗しました:', res.status);
+          return;
+        }
+        const text = await res.text();
+        const lines = text.trim().split("\n").slice(1);
+        videoData = lines.map(line => {
+          const [title, main, sub, url] = line.split(",").map(v => v.replace(/"/g, "").trim());
+          return { title, main, sub, url };
+        }).filter(v => v.url);
+        populateModalFilters(); // モーダル内フィルタを初期化
+        filterVideosInModal(); // モーダル内フィルタを初期化
+        console.log('動画データ読み込み完了:', videoData.length, '件');
+      } catch (error) {
+        console.error('スプレッドシートの読み込みエラー:', error);
       }
-      createThumbnail(id);
-      document.getElementById("videoUrl").value = "";
-      saveState();
     }
 
     // --- サムネイル要素を生成し、クリックでプレイヤーに切り替え ---
