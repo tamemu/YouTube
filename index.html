@@ -239,6 +239,27 @@
       box-sizing: border-box;
       max-width: 98vw;
       overflow: hidden;
+      max-height: 80vh;
+      overflow-y: auto;
+    }
+    .settings-panel::-webkit-scrollbar {
+      width: 8px;
+    }
+    .settings-panel::-webkit-scrollbar-track {
+      background: #333;
+      border-radius: 4px;
+    }
+    .settings-panel::-webkit-scrollbar-thumb {
+      background: #666;
+      border-radius: 4px;
+    }
+    .settings-panel::-webkit-scrollbar-thumb:hover {
+      background: #888;
+    }
+    @media (max-width: 600px) {
+      .settings-panel {
+        max-height: 85vh;
+      }
     }
     .settings-checkbox-group {
       width: 100%;
@@ -421,7 +442,7 @@
 
   <!-- 設定モーダル（コントロールバーを内包） -->
   <div id="settingsModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.6);z-index:999;align-items:center;justify-content:center;">
-    <div style="background:#222;padding:20px 10px 10px 10px;border-radius:8px;min-width:260px;max-width:95vw;max-height:90vh;overflow:auto;position:relative;">
+    <div style="background:#222;padding:20px 10px 10px 10px;border-radius:8px;min-width:260px;max-width:95vw;max-height:90vh;overflow-y:auto;position:relative;">
       <button id="closeSettings" style="position:absolute;top:6px;right:10px;font-size:18px;background:none;border:none;color:#fff;">×</button>
       <!-- コントロールバー（フィルタ・動画追加・レイアウト切替） -->
       <div id="controls"></div>
