@@ -54,15 +54,6 @@
       width: 80px;
       z-index: 10;
     }
-    /* --- 設定ボタンのフェードアウト --- */
-    #settingsBtn.hide {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s;
-    }
-    #settingsBtn {
-      transition: opacity 0.2s;
-    }
     /* --- 設定パネルのスタイル --- */
     .settings-panel {
       background: #23272f;
@@ -269,8 +260,8 @@
     </div>
   </div>
   
-  <!-- 設定ボタン -->
-  <button id="settingsBtn" style="position:fixed;top:0px;right:0px;z-index:1000;font-size:20px;padding:8px 14px;">⚙️</button>
+  <!-- 設定ボタン（トップマージン内に固定） -->
+  <button id="settingsBtn" style="position:fixed;top:10px;right:10px;z-index:1000;font-size:20px;padding:8px 14px;">⚙️</button>
 
   <!-- 動画サムネイル・プレイヤーの表示エリア -->
   <div id="container"></div>
@@ -421,19 +412,6 @@
       const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
       return volumes[videoId] !== undefined ? volumes[videoId] : 100;
     }
-
-    // --- 設定ボタンのスクロールによる自動非表示 ---
-    let lastScrollY = window.scrollY;
-    window.addEventListener('scroll', () => {
-      const btn = document.getElementById('settingsBtn');
-      if (!btn) return;
-      if (window.scrollY > lastScrollY + 0.3 ) {
-        btn.classList.add('hide');
-      } else if (window.scrollY < lastScrollY - 0.3 || window.scrollY === 0) {
-        btn.classList.remove('hide');
-      }
-      lastScrollY = window.scrollY;
-    });
 
     // --- 設定項目のトグル表示 ---
     document.addEventListener("DOMContentLoaded", () => {
