@@ -260,8 +260,10 @@
     </div>
   </div>
   
-  <!-- 設定ボタン（トップマージン内に固定） -->
-  <button id="settingsBtn" style="position:fixed;top:10px;right:10px;z-index:1000;font-size:20px;padding:8px 14px;">⚙️</button>
+  <!-- 設定ボタン（マージン部分に固定） -->
+  <div style="position:fixed;top:0;right:0;left:0;height:8vw;z-index:1000;pointer-events:none;">
+    <button id="settingsBtn" style="position:absolute;top:10px;right:10px;font-size:20px;padding:8px 14px;pointer-events:auto;">⚙️</button>
+  </div>
 
   <!-- 動画サムネイル・プレイヤーの表示エリア -->
   <div id="container"></div>
