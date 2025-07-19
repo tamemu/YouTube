@@ -804,7 +804,7 @@
         .forEach(v => {
           const o = document.createElement("option");
           o.value = v.url;
-          o.textContent = `${v.title} (${v.main}/${v.sub})`;
+          o.textContent = v.title; // 表示名のみ表示
           list.appendChild(o);
         });
     }
