@@ -427,9 +427,9 @@
     window.addEventListener('scroll', () => {
       const btn = document.getElementById('settingsBtn');
       if (!btn) return;
-      if (window.scrollY > lastScrollY + 1) {
+      if (window.scrollY > lastScrollY + 0.3 ) {
         btn.classList.add('hide');
-      } else if (window.scrollY < lastScrollY - 1 || window.scrollY === 0) {
+      } else if (window.scrollY < lastScrollY - 0.3 || window.scrollY === 0) {
         btn.classList.remove('hide');
       }
       lastScrollY = window.scrollY;
