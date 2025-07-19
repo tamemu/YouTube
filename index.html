@@ -370,19 +370,140 @@
         padding: 8px 14px;
       }
     }
+    .settings-panel {
+      background: #23272f;
+      padding: 16px;
+      border-radius: 12px;
+      color: #fff;
+      min-width: 280px;
+      max-width: 90vw;
+      box-shadow: 0 4px 20px #0008;
+      border: 1px solid #444;
+    }
+    .close-btn {
+      position: absolute;
+      top: 8px;
+      right: 12px;
+      font-size: 20px;
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+    .close-btn:hover {
+      background: #3fa7ff33;
+    }
+    .settings-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 16px;
+      padding-right: 30px;
+    }
+    .setting-group {
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #444;
+    }
+    .setting-group:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+    }
+    .group-title {
+      font-size: 14px;
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #3fa7ff;
+    }
+    .setting-row {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .setting-row:last-child {
+      margin-bottom: 0;
+    }
+    .setting-row select, .setting-row input {
+      flex: 1;
+      font-size: 13px;
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #555;
+      background: #333;
+      color: #fff;
+    }
+    .setting-row button {
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 4px;
+      border: 1px solid #3fa7ff;
+      background: #3fa7ff;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+    .setting-row button:hover {
+      background: #2d8ce6;
+    }
+    .simple-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      user-select: none;
+    }
+    .simple-checkbox input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      accent-color: #3fa7ff;
+    }
+    @media (max-width: 600px) {
+      .settings-panel {
+        min-width: 0;
+        width: 95vw;
+        padding: 12px;
+      }
+      .settings-title {
+        font-size: 20px;
+      }
+      .group-title {
+        font-size: 16px;
+      }
+      .setting-row select, .setting-row input {
+        font-size: 16px;
+        padding: 8px 10px;
+      }
+      .setting-row button {
+        font-size: 16px;
+        padding: 8px 14px;
+      }
+      .simple-checkbox {
+        font-size: 16px;
+        gap: 10px;
+      }
+      .simple-checkbox input[type="checkbox"] {
+        width: 20px;
+        height: 20px;
+      }
+    }
   </style>
 </head>
 <body>
   <!-- 設定項目: ボタン・スライダー表示切替用チェックボックス -->
   <div id="settingsToggles" style="display:none;position:fixed;top:60px;right:10px;z-index:1001;">
-    <div class="settings-panel" style="position:relative;overflow:hidden;box-sizing:border-box;">
-      <button id="closeSettings" style="position:absolute;top:12px;right:16px;font-size:22px;background:none;border:none;color:#fff;z-index:2;cursor:pointer;line-height:1;">×</button>
-      <div class="settings-title" style="padding-right:32px;">設定</div>
+    <div class="settings-panel">
+      <button id="closeSettings" class="close-btn">×</button>
+      <div class="settings-title">設定</div>
       
-      <!-- モーダル内の独立したフィルタ機能 -->
-      <div class="modal-section">
-        <div class="section-title">動画フィルタ</div>
-        <div class="filter-controls">
+      <!-- 動画フィルタ -->
+      <div class="setting-group">
+        <div class="group-title">動画フィルタ</div>
+        <div class="setting-row">
           <select id="modalMainCategory" onchange="filterVideosInModal()">
             <option value="">大分類</option>
           </select>
@@ -393,21 +514,23 @@
         </div>
       </div>
       
-      <!-- モーダル内の独立した動画追加機能 -->
-      <div class="modal-section">
-        <div class="section-title">動画追加</div>
-        <div class="video-add-controls">
+      <!-- 動画追加 -->
+      <div class="setting-group">
+        <div class="group-title">動画追加</div>
+        <div class="setting-row">
           <select id="modalVideoList"></select>
-          <button onclick="addSelectedVideosFromModal()">動画を追加</button>
+          <button onclick="addSelectedVideosFromModal()">追加</button>
+        </div>
+        <div class="setting-row">
           <input id="modalVideoUrl" placeholder="YouTubeのURL">
           <button onclick="addVideoByUrlFromModal()">URL追加</button>
         </div>
       </div>
       
-      <!-- モーダル内の独立したレイアウト切替機能 -->
-      <div class="modal-section">
-        <div class="section-title">レイアウト</div>
-        <div class="layout-controls">
+      <!-- レイアウト -->
+      <div class="setting-group">
+        <div class="group-title">レイアウト</div>
+        <div class="setting-row">
           <button onclick="applyLayoutFromModal(1)">1×1</button>
           <button onclick="applyLayoutFromModal(2)">2×2</button>
           <button onclick="applyLayoutFromModal(3)">3×3</button>
@@ -415,21 +538,23 @@
       </div>
       
       <!-- 表示設定 -->
-      <div class="modal-section">
-        <div class="settings-checkbox-group settings-checkbox-indent">
-          <label class="settings-checkbox">
+      <div class="setting-group">
+        <div class="group-title">表示設定</div>
+        <div class="setting-row">
+          <label class="simple-checkbox">
             <input type="checkbox" id="toggleUpDown" checked>
-            <span class="checkmark"></span>
             上下ボタン表示
           </label>
-          <label class="settings-checkbox">
+        </div>
+        <div class="setting-row">
+          <label class="simple-checkbox">
             <input type="checkbox" id="toggleVolume" checked>
-            <span class="checkmark"></span>
             音量スライダー表示
           </label>
-          <label class="settings-checkbox">
+        </div>
+        <div class="setting-row">
+          <label class="simple-checkbox">
             <input type="checkbox" id="toggleRemove" checked>
-            <span class="checkmark"></span>
             削除ボタン表示
           </label>
         </div>
