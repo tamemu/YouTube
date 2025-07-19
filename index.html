@@ -18,6 +18,7 @@
       grid-template-columns: repeat(2, 1fr);
       gap: 10px;
       padding: 10px;
+      margin-top: 8vw; /* 設定ボタンの高さ分の余白（画面幅に応じて自動調整） */
     }
     .video-thumb {
       position: relative;
@@ -192,6 +193,9 @@
         height: 5vw;
         min-width: 5vw;
         min-height: 5vw;
+      }
+      #container {
+        margin-top: 12vw; /* スマホでは設定ボタンが大きいため余白を増加 */
       }
     }
   </style>
