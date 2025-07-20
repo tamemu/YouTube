@@ -264,7 +264,7 @@
   </div>
   
   <!-- 設定ボタン（動画コンテナの上部マージン内に配置） -->
-  <div style="position:absolute;top:5px;right:5px;z-index:1000;">
+  <div style="position:absolute;top:2px;right:5px;z-index:1000;">
     <button id="settingsBtn" style="font-size:20px;padding:8px 14px;">⚙️</button>
   </div>
 
@@ -357,7 +357,7 @@
         const ytPlayer = new YT.Player(iframe, {
           events: {
             onReady: event => {
-              event.target.setPlaybackRate(2);
+              event.target.setPlaybackRate(1);
               event.target.setVolume(volumeSlider.value);
               volumeSlider.oninput = () => {
                 event.target.setVolume(volumeSlider.value);
