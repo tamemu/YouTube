@@ -2,138 +2,260 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>YouTubeマルチプレイ</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>YouTubeマルチプレイ 軽量化版</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <style>
-    /* --- ページ全体の基本スタイル --- */
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: sans-serif;
+    :root {
+      --bg: #000;
+      --fg: #fff;
+      --panel: #1f2329;
+      --panel-border: #3b4350;
+      --input: #2a2f38;
+      --accent: #3fa7ff;
+      --thumb-bg: #181818;
+      --thumb-border: #353535;
+      --ctrl-font: 12px;
+      --ctrl-pad-y: 2px;
+      --ctrl-pad-x: 6px;
+      --ctrl-btn-size: 24px;
+      --volume-width: 88px;
+      --volume-left: 42px;
     }
-    /* --- 動画サムネイルのグリッドレイアウト --- */
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: sans-serif;
+      overflow-x: hidden;
+    }
+
+    #settingsBar {
+      position: fixed;
+      top: 8px;
+      right: 8px;
+      z-index: 1000;
+    }
+
+    #settingsBtn {
+      font-size: 16px;
+      padding: 8px 12px;
+      border: 1px solid #4c5563;
+      border-radius: 10px;
+      background: #20252d;
+      color: #fff;
+      cursor: pointer;
+    }
+
     #container {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 10px;
-      padding: 10px;
-      margin-top: 4vw; /* 設定ボタンの高さ分の余白（画面幅に応じて自動調整） */
+      gap: 8px;
+      padding: 48px 8px 8px;
     }
+
     .video-thumb {
       position: relative;
-      background: #222;
-      border: 1px solid #444;
+      background: var(--thumb-bg);
+      border: 1px solid var(--thumb-border);
       padding-top: 56.25%;
       cursor: pointer;
-      overflow: visible;
+      overflow: hidden;
+      border-radius: 8px;
     }
+
     .video-thumb img,
     .video-thumb iframe {
       position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
     }
-    .remove-btn {
-      position: absolute; top: 2px; right: 2px;
-      background: red; color: #fff; border: none;
-      font-size: 12px; padding: 2px 5px;
-      cursor: pointer; z-index: 10;
-    }
+
+    .remove-btn,
     .move-btn {
-      position: absolute; left: 2px; width: 24px;
-      font-size: 12px; background: #444; color: #fff;
-      border: none; padding: 2px; cursor: pointer; z-index: 10;
+      position: absolute;
+      z-index: 10;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      font-size: var(--ctrl-font);
+      line-height: 1;
+      padding: var(--ctrl-pad-y) var(--ctrl-pad-x);
+      min-width: var(--ctrl-btn-size);
+      min-height: var(--ctrl-btn-size);
+      border-radius: 6px;
+      opacity: 0.92;
     }
-    .move-up { top: 2px; }
-    .move-down { top: 24px; }
+
+    .remove-btn {
+      top: 4px;
+      right: 4px;
+      background: rgba(220, 40, 40, 0.92);
+    }
+
+    .move-btn {
+      left: 4px;
+      background: rgba(55, 55, 55, 0.92);
+    }
+
+    .move-up { top: 4px; }
+    .move-down { top: calc(4px + var(--ctrl-btn-size) + 4px); }
+
     .volume-slider {
       position: absolute;
-      left: 40px;
-      top: 4px;
-      width: 80px;
+      left: var(--volume-left);
+      top: 6px;
+      width: var(--volume-width);
       z-index: 10;
+      accent-color: var(--accent);
     }
-    /* --- 設定パネルのスタイル --- */
+
+    .layout-1 {
+      --ctrl-font: 13px;
+      --ctrl-pad-y: 3px;
+      --ctrl-pad-x: 7px;
+      --ctrl-btn-size: 26px;
+      --volume-width: 100px;
+      --volume-left: 46px;
+    }
+
+    .layout-2 {
+      --ctrl-font: 11px;
+      --ctrl-pad-y: 2px;
+      --ctrl-pad-x: 6px;
+      --ctrl-btn-size: 22px;
+      --volume-width: 78px;
+      --volume-left: 38px;
+    }
+
+    .layout-3 {
+      --ctrl-font: 9px;
+      --ctrl-pad-y: 1px;
+      --ctrl-pad-x: 4px;
+      --ctrl-btn-size: 18px;
+      --volume-width: 58px;
+      --volume-left: 30px;
+    }
+
+    #settingsToggles {
+      display: none;
+      position: fixed;
+      top: 8px;
+      right: 10px;
+      bottom: 8px;
+      z-index: 1001;
+      width: min(92vw, 360px);
+      padding-bottom: max(6px, env(safe-area-inset-bottom));
+    }
+
     .settings-panel {
-      background: #23272f;
-      padding: 16px;
-      border-radius: 12px;
+      position: relative;
+      width: 100%;
+      height: 100%;
+      background: var(--panel);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
       color: #fff;
-      min-width: 280px;
-      max-width: 90vw;
-      box-shadow: 0 4px 20px #0008;
-      border: 1px solid #444;
+      padding: 14px;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.28);
     }
+
     .close-btn {
       position: absolute;
       top: 8px;
-      right: 12px;
+      right: 10px;
       font-size: 20px;
       background: none;
       border: none;
       color: #fff;
       cursor: pointer;
       padding: 4px 8px;
-      border-radius: 4px;
-      transition: background 0.2s;
+      border-radius: 6px;
     }
-    .close-btn:hover {
-      background: #3fa7ff33;
-    }
+
     .settings-title {
       font-size: 18px;
-      font-weight: bold;
-      margin-bottom: 16px;
-      padding-right: 30px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      padding-right: 32px;
     }
+
     .setting-group {
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #444;
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid #36404e;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.02);
     }
-    .setting-group:last-child {
-      border-bottom: none;
-      margin-bottom: 0;
-    }
+
     .group-title {
-      font-size: 14px;
-      font-weight: bold;
+      font-size: 13px;
+      font-weight: 700;
       margin-bottom: 8px;
-      color: #3fa7ff;
+      color: #7fc5ff;
     }
+
     .setting-row {
       display: flex;
       gap: 8px;
       align-items: center;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
+      min-width: 0;
     }
-    .setting-row:last-child {
-      margin-bottom: 0;
-    }
-    .setting-row select, .setting-row input {
-      flex: 1;
-      font-size: 13px;
-      padding: 6px 8px;
-      border-radius: 4px;
-      border: 1px solid #555;
-      background: #333;
-      color: #fff;
-    }
+
+    .setting-row:last-child { margin-bottom: 0; }
+
+    .setting-row select,
+    .setting-row input,
     .setting-row button {
       font-size: 13px;
-      padding: 6px 12px;
-      border-radius: 4px;
-      border: 1px solid #3fa7ff;
-      background: #3fa7ff;
+      min-height: 36px;
+      border-radius: 8px;
+    }
+
+    .setting-row select,
+    .setting-row input {
+      min-width: 0;
+      border: 1px solid #4b5564;
+      background: var(--input);
       color: #fff;
+      padding: 8px 10px;
+    }
+
+    .setting-row button {
+      border: 1px solid var(--accent);
+      background: var(--accent);
+      color: #fff;
+      padding: 8px 12px;
       cursor: pointer;
-      transition: background 0.2s;
       white-space: nowrap;
     }
-    .setting-row button:hover {
-      background: #2d8ce6;
+
+    .filter-row select {
+      flex: 0 1 108px;
+      max-width: 108px;
     }
+
+    .filter-row button {
+      flex: 0 0 auto;
+    }
+
+    #modalVideoList,
+    #modalVideoUrl {
+      flex: 1 1 auto;
+    }
+
+    .layout-row button {
+      flex: 1 1 0;
+      padding-inline: 0;
+    }
+
     .simple-checkbox {
       display: flex;
       align-items: center;
@@ -142,103 +264,123 @@
       cursor: pointer;
       user-select: none;
     }
+
     .simple-checkbox input[type="checkbox"] {
       width: 16px;
       height: 16px;
-      accent-color: #3fa7ff;
+      accent-color: var(--accent);
+      flex: 0 0 auto;
     }
-    /* --- スマホ対応 --- */
-          @media (max-width: 600px) {
-        #settingsBtn {
-          font-size: 2vw !important;
-          padding: 1vw 1.5vw !important;
-          /* 位置調整を追加 */
-          top: 0.2vw !important;
-          right: 0.2vw !important;
-        }
-      .settings-panel {
-        min-width: 0;
-        width: 92vw;
-        padding: 3vw;
-        max-width: 92vw;
+
+    .settings-panel::after {
+      content: "";
+      display: block;
+      height: max(28px, env(safe-area-inset-bottom));
+    }
+
+    @media (max-width: 600px) {
+      #settingsBtn {
+        font-size: 14px;
+        padding: 7px 10px;
       }
-      .settings-title {
-        font-size: 5vw;
-      }
-      .group-title {
-        font-size: 4vw;
-      }
-      .setting-row select, .setting-row input {
-        font-size: 4vw;
-        padding: 2vw 2.5vw;
-        min-width: 0;
-      }
-      .setting-row button {
-        font-size: 4vw;
-        padding: 2vw 3vw;
-        white-space: nowrap;
-      }
-      .simple-checkbox {
-        font-size: 4vw;
-        gap: 2.5vw;
-      }
-      .simple-checkbox input[type="checkbox"] {
-        width: 5vw;
-        height: 5vw;
-        min-width: 5vw;
-        min-height: 5vw;
-      }
+
       #container {
-        margin-top: 4vw; /* スマホでは設定ボタンが大きいため余白を増加 */
+        gap: 6px;
+        padding: 44px 6px 6px;
+      }
+
+      #settingsToggles {
+        left: 4vw;
+        right: 4vw;
+        width: auto;
+        top: 8px;
+        bottom: 8px;
+      }
+
+      .settings-panel {
+        padding: 12px;
+        border-radius: 12px;
+      }
+
+      .settings-title { font-size: 17px; }
+      .group-title { font-size: 13px; }
+
+      .setting-row {
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+
+      .filter-row select {
+        flex: 1 1 calc(50% - 3px);
+        max-width: none;
+      }
+
+      .filter-row button,
+      #modalVideoList,
+      #modalVideoUrl,
+      .setting-row button {
+        flex: 1 1 100%;
+      }
+
+      .layout-row button {
+        flex: 1 1 calc(33.33% - 4px);
+      }
+
+      .layout-3 {
+        --ctrl-font: 8px;
+        --ctrl-pad-y: 1px;
+        --ctrl-pad-x: 3px;
+        --ctrl-btn-size: 16px;
+        --volume-width: 48px;
+        --volume-left: 26px;
       }
     }
   </style>
 </head>
 <body>
-  <!-- 設定項目 -->
-  <div id="settingsToggles" style="display:none;position:fixed;top:60px;right:10px;z-index:1001;">
-    <div class="settings-panel">
-      <button id="closeSettings" class="close-btn">×</button>
+  <div id="settingsBar">
+    <button id="settingsBtn" type="button">⚙️ 設定</button>
+  </div>
+
+  <div id="settingsToggles">
+    <div class="settings-panel" id="settingsPanel">
+      <button id="closeSettings" class="close-btn" type="button">×</button>
       <div class="settings-title">設定</div>
-      
-      <!-- 動画フィルタ -->
+
       <div class="setting-group">
         <div class="group-title">動画フィルタ</div>
-        <div class="setting-row">
+        <div class="setting-row filter-row">
           <select id="modalMainCategory" onchange="filterVideosInModal()">
             <option value="">大分類</option>
           </select>
           <select id="modalSubCategory" onchange="filterVideosInModal()">
             <option value="">小分類</option>
           </select>
-          <button onclick="clearFiltersInModal()">全解除</button>
+          <button type="button" onclick="clearFiltersInModal()">全解除</button>
         </div>
       </div>
-      
-      <!-- 動画追加 -->
+
       <div class="setting-group">
         <div class="group-title">動画追加</div>
         <div class="setting-row">
           <select id="modalVideoList"></select>
-          <button onclick="addSelectedVideosFromModal()">追加</button>
+          <button type="button" onclick="addSelectedVideosFromModal()">追加</button>
         </div>
         <div class="setting-row">
           <input id="modalVideoUrl" placeholder="YouTubeのURL">
-          <button onclick="addVideoByUrlFromModal()">URL追加</button>
+          <button type="button" onclick="addVideoByUrlFromModal()">URL追加</button>
         </div>
       </div>
-      
-      <!-- レイアウト -->
+
       <div class="setting-group">
         <div class="group-title">レイアウト</div>
-        <div class="setting-row">
-          <button onclick="applyLayoutFromModal(1)">1×1</button>
-          <button onclick="applyLayoutFromModal(2)">2×2</button>
-          <button onclick="applyLayoutFromModal(3)">3×3</button>
+        <div class="setting-row layout-row">
+          <button type="button" onclick="applyLayoutFromModal(1)">1×1</button>
+          <button type="button" onclick="applyLayoutFromModal(2)">2×2</button>
+          <button type="button" onclick="applyLayoutFromModal(3)">3×3</button>
         </div>
       </div>
-      
-      <!-- 表示設定 -->
+
       <div class="setting-group">
         <div class="group-title">表示設定</div>
         <div class="setting-row">
@@ -262,36 +404,40 @@
       </div>
     </div>
   </div>
-  
-  <!-- 設定ボタン（動画コンテナの上部マージン内に配置） -->
-  <div style="position:absolute;top:2px;right:5px;z-index:1000;">
-    <button id="settingsBtn" style="font-size:20px;padding:8px 14px;">⚙️</button>
-  </div>
 
-  <!-- 動画サムネイル・プレイヤーの表示エリア -->
-  <div id="container"></div>
+  <div id="container" class="layout-2"></div>
 
-  <!-- YouTube IFrame APIの読み込み -->
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
-    // --- Googleスプレッドシートから動画リストを取得するURL ---
     const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vTwHDe9XYtJGqxS_aEGJB7lDK-StQ4UKrrnxKALrPPmVL0aNrEyWwv1wilX-ohr1LQDYn5rvPb0EQll/pub?gid=1636424413&single=true&output=csv";
+    const container = document.getElementById("container");
+    const settingsBtn = document.getElementById("settingsBtn");
+    const settingsToggles = document.getElementById("settingsToggles");
+    const settingsPanel = document.getElementById("settingsPanel");
+    const closeSettingsBtn = document.getElementById("closeSettings");
     let videoData = [];
 
-    // --- YouTube URLから動画IDを抽出 ---
     function extractVideoID(url) {
-      const m = url.match(/(?:v=|\/)([A-Za-z0-9_-]{11})(?:[&?]|$)/);
-      return m ? m[1] : null;
+      if (!url) return null;
+      const patterns = [
+        /[?&]v=([A-Za-z0-9_-]{11})/,
+        /youtu\.be\/([A-Za-z0-9_-]{11})/,
+        /embed\/([A-Za-z0-9_-]{11})/,
+        /shorts\/([A-Za-z0-9_-]{11})/,
+        /live\/([A-Za-z0-9_-]{11})/,
+        /\/([A-Za-z0-9_-]{11})(?:[?&]|$)/
+      ];
+      for (const pattern of patterns) {
+        const match = url.match(pattern);
+        if (match) return match[1];
+      }
+      return /^[A-Za-z0-9_-]{11}$/.test(url) ? url : null;
     }
 
-    // --- スプレッドシートから動画リストを取得・整形 ---
     async function loadSpreadsheet() {
       try {
-        const res = await fetch(sheetUrl);
-        if (!res.ok) {
-          console.error('スプレッドシートの取得に失敗しました:', res.status);
-          return;
-        }
+        const res = await fetch(sheetUrl, { cache: "no-store" });
+        if (!res.ok) return;
         const text = await res.text();
         const lines = text.trim().split("\n").slice(1);
         videoData = lines.map(line => {
@@ -300,15 +446,42 @@
         }).filter(v => v.url);
         populateModalFilters();
         filterVideosInModal();
-        console.log('動画データ読み込み完了:', videoData.length, '件');
-      } catch (error) {
-        console.error('スプレッドシートの読み込みエラー:', error);
-      }
+      } catch (_) {}
     }
 
-    // --- サムネイル要素を生成し、クリックでプレイヤーに切り替え ---
+    function createBaseButtons(box) {
+      const close = document.createElement("button");
+      close.className = "remove-btn";
+      close.type = "button";
+      close.textContent = "×";
+      close.onclick = e => {
+        e.stopPropagation();
+        box.remove();
+        saveState();
+      };
+
+      const up = document.createElement("button");
+      up.className = "move-btn move-up";
+      up.type = "button";
+      up.textContent = "↑";
+      up.onclick = e => {
+        e.stopPropagation();
+        moveBox(box, -1);
+      };
+
+      const down = document.createElement("button");
+      down.className = "move-btn move-down";
+      down.type = "button";
+      down.textContent = "↓";
+      down.onclick = e => {
+        e.stopPropagation();
+        moveBox(box, 1);
+      };
+
+      return { close, up, down };
+    }
+
     function createThumbnail(id) {
-      const c = document.getElementById("container");
       const box = document.createElement("div");
       box.className = "video-thumb";
       box.dataset.videoId = id;
@@ -316,31 +489,16 @@
       const img = document.createElement("img");
       img.src = `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
       img.loading = "lazy";
+      img.decoding = "async";
 
-      const close = document.createElement("button");
-      close.className = "remove-btn";
-      close.textContent = "×";
-      close.onclick = e => { e.stopPropagation(); box.remove(); saveState(); };
-
-      const up = document.createElement("button");
-      up.className = "move-btn move-up";
-      up.textContent = "↑";
-      up.onclick = e => { e.stopPropagation(); moveBox(box, -1); };
-
-      const down = document.createElement("button");
-      down.className = "move-btn move-down";
-      down.textContent = "↓";
-      down.onclick = e => { e.stopPropagation(); moveBox(box, 1); };
-
+      const { close, up, down } = createBaseButtons(box);
       box.append(img, close, up, down);
 
-      // サムネイルクリックでYouTubeプレイヤーに切り替え
       box.onclick = () => {
         if (box.querySelector("iframe")) return;
 
         const iframe = document.createElement("iframe");
         iframe.src = `https://www.youtube.com/embed/${id}?autoplay=1&rel=0&enablejsapi=1`;
-        iframe.frameBorder = 0;
         iframe.allow = "accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture";
         iframe.allowFullscreen = true;
 
@@ -354,7 +512,7 @@
         box.innerHTML = "";
         box.append(close, up, down, iframe, volumeSlider);
 
-        const ytPlayer = new YT.Player(iframe, {
+        new YT.Player(iframe, {
           events: {
             onReady: event => {
               event.target.setPlaybackRate(1);
@@ -371,90 +529,72 @@
         updateThumbControlsVisibility();
       };
 
-      c.appendChild(box);
+      container.appendChild(box);
       updateThumbControlsVisibility();
     }
 
-    // --- サムネイルの順序を入れ替え ---
     function moveBox(box, dir) {
-      const c = document.getElementById("container");
-      const arr = Array.from(c.children);
-      const i = arr.indexOf(box), j = i + dir;
+      const arr = Array.from(container.children);
+      const i = arr.indexOf(box);
+      const j = i + dir;
       if (j < 0 || j >= arr.length) return;
-      if (dir > 0) c.insertBefore(arr[j], box);
-      else c.insertBefore(box, arr[j]);
+      if (dir > 0) container.insertBefore(arr[j], box);
+      else container.insertBefore(box, arr[j]);
       saveState();
     }
 
-    // --- レイアウト（列数）を切り替え・記憶 ---
+    function setLayoutClass(cols) {
+      container.classList.remove("layout-1", "layout-2", "layout-3");
+      container.classList.add(`layout-${cols}`);
+    }
+
     function applyLayout(cols) {
-      document.getElementById("container").style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      container.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+      setLayoutClass(cols);
       localStorage.setItem("gridCols", cols);
     }
 
-    // --- サムネイルの状態をlocalStorageに保存 ---
     function saveState() {
-      const ids = Array.from(document.querySelectorAll(".video-thumb"))
-        .map(b => b.dataset.videoId);
+      const ids = Array.from(document.querySelectorAll(".video-thumb")).map(b => b.dataset.videoId);
       localStorage.setItem("videoThumbs", JSON.stringify(ids));
     }
 
-    // --- サムネイルの状態をlocalStorageから復元 ---
     function loadState() {
-      JSON.parse(localStorage.getItem("videoThumbs") || "[]")
-        .forEach(id => createThumbnail(id));
+      JSON.parse(localStorage.getItem("videoThumbs") || "[]").forEach(createThumbnail);
     }
 
-    // --- 動画ごとの音量をlocalStorageに保存 ---
     function saveVolume(videoId, volume) {
       const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
       volumes[videoId] = volume;
       localStorage.setItem("videoVolumes", JSON.stringify(volumes));
     }
 
-    // --- 動画ごとの音量をlocalStorageから取得 ---
     function getSavedVolume(videoId) {
       const volumes = JSON.parse(localStorage.getItem("videoVolumes") || "{}");
       return volumes[videoId] !== undefined ? volumes[videoId] : 100;
     }
 
-    // --- 設定項目のトグル表示 ---
-    document.addEventListener("DOMContentLoaded", () => {
-      const settingsBtn = document.getElementById("settingsBtn");
-      const settingsToggles = document.getElementById("settingsToggles");
-      
-      settingsBtn.onclick = () => {
-        settingsToggles.style.display = "block";
-      };
-      
-      document.getElementById("closeSettings").onclick = () => {
-        settingsToggles.style.display = "none";
-      };
-    });
-
-    // --- 各ボタン・スライダーの表示/非表示切替 ---
-    function updateThumbControlsVisibility() {
-      const showUpDown = document.getElementById('toggleUpDown').checked;
-      const showVolume = document.getElementById('toggleVolume').checked;
-      const showRemove = document.getElementById('toggleRemove').checked;
-      document.querySelectorAll('.move-btn').forEach(btn => btn.style.display = showUpDown ? '' : 'none');
-      document.querySelectorAll('.volume-slider').forEach(slider => slider.style.display = showVolume ? '' : 'none');
-      document.querySelectorAll('.remove-btn').forEach(btn => btn.style.display = showRemove ? '' : 'none');
-      localStorage.setItem('showUpDown', showUpDown ? '1' : '0');
-      localStorage.setItem('showVolume', showVolume ? '1' : '0');
-      localStorage.setItem('showRemove', showRemove ? '1' : '0');
+    function closeSettings() {
+      settingsToggles.style.display = "none";
     }
-    
-    document.addEventListener('DOMContentLoaded', () => {
-      ['toggleUpDown','toggleVolume','toggleRemove'].forEach(id => {
-        document.getElementById(id).onchange = updateThumbControlsVisibility;
-      });
-      if(localStorage.getItem('showUpDown')==='0') document.getElementById('toggleUpDown').checked = false;
-      if(localStorage.getItem('showVolume')==='0') document.getElementById('toggleVolume').checked = false;
-      if(localStorage.getItem('showRemove')==='0') document.getElementById('toggleRemove').checked = false;
-    });
 
-    // --- モーダル内の独立したフィルタ機能 ---
+    function toggleSettings(e) {
+      e.stopPropagation();
+      settingsToggles.style.display = settingsToggles.style.display === "block" ? "none" : "block";
+    }
+
+    function updateThumbControlsVisibility() {
+      const showUpDown = document.getElementById("toggleUpDown").checked;
+      const showVolume = document.getElementById("toggleVolume").checked;
+      const showRemove = document.getElementById("toggleRemove").checked;
+      document.querySelectorAll(".move-btn").forEach(btn => btn.style.display = showUpDown ? "" : "none");
+      document.querySelectorAll(".volume-slider").forEach(slider => slider.style.display = showVolume ? "" : "none");
+      document.querySelectorAll(".remove-btn").forEach(btn => btn.style.display = showRemove ? "" : "none");
+      localStorage.setItem("showUpDown", showUpDown ? "1" : "0");
+      localStorage.setItem("showVolume", showVolume ? "1" : "0");
+      localStorage.setItem("showRemove", showRemove ? "1" : "0");
+    }
+
     function filterVideosInModal() {
       const main = document.getElementById("modalMainCategory").value;
       const sub = document.getElementById("modalSubCategory").value;
@@ -476,14 +616,13 @@
       filterVideosInModal();
     }
 
-    // --- モーダル内の独立した動画追加機能 ---
     function addSelectedVideosFromModal() {
       const url = document.getElementById("modalVideoList").value;
       addVideoByUrlFromModal(url);
     }
 
     function addVideoByUrlFromModal(inputUrl = null) {
-      const url = inputUrl || document.getElementById("modalVideoUrl").value;
+      const url = inputUrl || document.getElementById("modalVideoUrl").value.trim();
       const id = extractVideoID(url);
       if (!id) {
         alert("有効なYouTubeリンクを入力してください");
@@ -494,32 +633,50 @@
       saveState();
     }
 
-    // --- モーダル内の独立したレイアウト切替機能 ---
     function applyLayoutFromModal(cols) {
-      document.getElementById("container").style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
-      localStorage.setItem("gridCols", cols);
+      applyLayout(cols);
     }
 
-    // --- モーダル内のフィルタ用セレクトボックスを生成 ---
     function populateModalFilters() {
       const mainSel = document.getElementById("modalMainCategory");
       const subSel = document.getElementById("modalSubCategory");
-      const mains = [...new Set(videoData.map(v => v.main))].sort();
-      const subs = [...new Set(videoData.map(v => v.sub))].sort();
+      const mains = [...new Set(videoData.map(v => v.main).filter(Boolean))].sort();
+      const subs = [...new Set(videoData.map(v => v.sub).filter(Boolean))].sort();
       mainSel.innerHTML = '<option value="">大分類</option>';
       subSel.innerHTML = '<option value="">小分類</option>';
       mains.forEach(v => mainSel.innerHTML += `<option>${v}</option>`);
       subs.forEach(v => subSel.innerHTML += `<option>${v}</option>`);
     }
 
-    // --- ページロード時の初期化 ---
-    window.onload = () => {
+    document.addEventListener("DOMContentLoaded", () => {
+      settingsBtn.addEventListener("click", toggleSettings);
+      closeSettingsBtn.addEventListener("click", closeSettings);
+      settingsPanel.addEventListener("click", e => e.stopPropagation());
+
+      document.addEventListener("pointerdown", e => {
+        if (settingsToggles.style.display !== "block") return;
+        if (settingsPanel.contains(e.target) || settingsBtn.contains(e.target)) return;
+        closeSettings();
+      }, { capture: true });
+
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape") closeSettings();
+      });
+
+      ["toggleUpDown", "toggleVolume", "toggleRemove"].forEach(id => {
+        document.getElementById(id).addEventListener("change", updateThumbControlsVisibility);
+      });
+
+      if (localStorage.getItem("showUpDown") === "0") document.getElementById("toggleUpDown").checked = false;
+      if (localStorage.getItem("showVolume") === "0") document.getElementById("toggleVolume").checked = false;
+      if (localStorage.getItem("showRemove") === "0") document.getElementById("toggleRemove").checked = false;
+
       loadSpreadsheet();
       loadState();
-      const savedCols = localStorage.getItem("gridCols");
-      applyLayout(savedCols ? Number(savedCols) : 2);
+      const savedCols = Number(localStorage.getItem("gridCols") || 2);
+      applyLayout(savedCols);
       updateThumbControlsVisibility();
-    };
+    });
   </script>
 </body>
 </html>
